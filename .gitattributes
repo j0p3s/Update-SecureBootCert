@@ -1,1 +1,4 @@
-Update-SecureBootCert-GUI.cmd text eol=crlf
+# Windows scripts must keep CRLF line endings (cmd.exe can misread labels in LF-only batch files)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf

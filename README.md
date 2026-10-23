@@ -1,622 +1,314 @@
-# Windows Secure Boot Certificate Auto-Updater
+# Windows Secure Boot Certificate Updater
 
-> [!WARNING]
-> **Action Required: The June 2026 deadline has passed! Download and run this tool immediately to update your Secure Boot certificate to the 2023 version to prevent boot failure or driver compatibility issues.**
+> [!IMPORTANT]
+> Microsoft's 2011 Secure Boot certificates expired between June and October 2026. A PC without the 2023 certificates **still starts and still gets normal Windows updates**, but it no longer gets security fixes for the boot process (boot manager, Secure Boot DB/DBX updates, revocations). This tool checks your PC and, if needed, asks Windows to install the 2023 certificates and the 2023-signed boot manager.
 >
-> If you don't know how to use Git, you can directly download the packaged zip file:
-> 📦 **[Download Update-SecureBootCert.zip](https://github.com/anomixer/Update-SecureBootCert/releases/latest/download/Update-SecureBootCert.zip)**
+> 📦 **[Download Update-SecureBootCert.zip](https://github.com/j0p3s/Update-SecureBootCert/releases/latest/download/Update-SecureBootCert.zip)**
 
 [中文說明 (Traditional Chinese)](./README_TW.md)
 
-![version](https://img.shields.io/badge/version-1.2.1-orange) ![platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-blue)
+![version](https://img.shields.io/badge/version-2.0-orange) ![platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011%20%7C%20Server-blue)
 
-> Automatically checks, downloads, and installs Windows Secure Boot certificate updates, ensuring your system continues to function correctly after the certificate expiration in June 2026.
-
-## 📑 Table of Contents
+## Table of Contents
 
 - [Quick Start](#quick-start)
-- [Why Update?](#why-update)
-- [Supported Systems](#supported-systems)
-- [Key Features](#key-features)
-- [Installation](#installation)
-- [KB Update Information](#kb-update-information)
-- [LTSC Version Support](#ltsc-version-support)
-- [Non-ESU User Guide](#non-esu-user-guide)
-- [Technical Principles of Non-ESU Mode](#technical-principles-of-non-esu-mode)
-- [Verifying the Update](#verifying-the-update)
-- [Enterprise Deployment](#enterprise-deployment)
-- [FAQ](#faq)
-- [🚨 Emergency Rescue (Post-June 2026)](#-emergency-rescue-post-june-2026-)
-- [BIOS Legacy Mode Users (Post-June 2026)](#bios-legacy-mode-users-post-june-2026)
+- [What the 2026 expiry means](#what-the-2026-expiry-means)
+- [What the tool does](#what-the-tool-does)
+- [Supported systems](#supported-systems)
+- [Command line](#command-line)
+- [Reading the status](#reading-the-status)
+- [Windows 10 without ESU](#windows-10-without-esu)
+- [Troubleshooting](#troubleshooting)
+- [If the PC does not start](#if-the-pc-does-not-start)
+- [Legacy BIOS (CSM) users](#legacy-bios-csm-users)
+- [Enterprise deployment](#enterprise-deployment)
+- [Checking by hand](#checking-by-hand)
 - [References](#references)
+- [Credits](#credits)
 - [Changelog](#changelog)
 
 ---
 
 ## Quick Start
 
-### Basic Usage
+1. Download the zip and unzip it. If Windows blocks the files, right-click the zip → **Properties** → tick **Unblock** before unzipping.
+2. Open one of these (both ask for administrator rights once):
+   - **`Update-SecureBootCert-GUI.cmd`**: a window with the status and the options.
+   - **`RunMe.bat`**: the same steps in a console window.
+3. Read the status at the top. If it says the PC is not updated, start the update. Nothing changes before you confirm.
+4. **Restart** when asked, then **open the tool again**: it starts the next step and confirms the result. It can ask for one more restart.
 
-**One-Click Execution (Recommended)**
-```
-Double-click RunMe.bat
-```
-- ✅ Easiest method! Just double-click.
-- ✅ Automatically requests administrator privileges.
-- ✅ Automatically bypasses execution policies.
+> [!TIP]
+> If the PC uses **BitLocker**, have the 48-digit recovery key ready ([aka.ms/myrecoverykey](https://aka.ms/myrecoverykey)), or choose **Suspend BitLocker for 2 restarts** in the tool. BitLocker turns back on by itself.
 
-**Process Flow**:
-1. Automatically requests administrator privileges.
-2. Checks certificate status.
-3. Downloads and installs updates.
-4. Deploys new certificates to the Secure Boot DB.
-5. Prompts for reboot (two reboots required).
-
-### GUI (Optional)
-
-```
-Double-click Update-SecureBootCert-GUI.cmd
-```
-- A window that does the same steps as the script, but lets you choose what to do.
-- Shows Secure Boot, the Windows version and the certificates found in the firmware (KEK and DB), with their status.
-- Tick the steps you want: install KB5073724 (Windows 10 only), install all pending Windows updates, and deploy Windows UEFI CA 2023 to the Secure Boot DB.
-- Nothing is changed until you click **Start update** and confirm. A **Restart now** button appears when a restart is needed (two restarts are required).
-- Asks for administrator rights once (UAC). Works with the same requirements as the script.
-
-### System Requirements
-
-- ✅ Windows 10 (22H2/21H2/LTSC 2021)
-- ✅ Windows 11 (All versions)
-- ✅ Windows Server 2016/2019/2022/2025
-- ⚠️ Administrator privileges required
-- ⚠️ Internet connection required
+Logs are saved in `%ProgramData%\Update-SecureBootCert`.
 
 ---
 
-## Why Update?
+## What the 2026 expiry means
 
-### Certificate Expiration Schedule
-
-| Expired / Expiring Old Certificate | Expiration Date | New Certificate | Storage Location | Purpose |
+| Old certificate | Expired | Replaced by | Stored in | Used for |
 |---|---|---|---|---|
-| **Microsoft Corporation KEK CA 2011** | June 2026 | Microsoft Corporation KEK 2K CA 2023 | Stored in KEK | Signing updates for DB and DBX. |
-| **Microsoft Windows Production PCA 2011** | October 2026 | Windows UEFI CA 2023 | Stored in DB | Signing the Windows bootloader. |
-| **Microsoft UEFI CA 2011** | June 2026 | Microsoft UEFI CA 2023 | Stored in DB | Signing 3rd-party bootloaders and EFI apps. |
-| **Microsoft UEFI CA 2011** | June 2026 | Microsoft Option ROM UEFI CA 2023 | Stored in DB | Signing 3rd-party Option ROMs. |
+| Microsoft Corporation KEK CA 2011 | 2026-06-24 | Microsoft Corporation KEK 2K CA 2023 (valid to 2038) | KEK | Signing updates to DB and DBX |
+| Microsoft Corporation UEFI CA 2011 | 2026-06-27 | Microsoft UEFI CA 2023 (to 2038) | DB | Third-party boot loaders (Linux shim, tools) |
+| Microsoft Corporation UEFI CA 2011 | 2026-06-27 | Microsoft Option ROM UEFI CA 2023 (to 2038) | DB | Third-party option ROMs (graphics, network cards) |
+| Microsoft Windows Production PCA 2011 | 2026-10-19 | Windows UEFI CA 2023 (to 2035) | DB | The Windows boot manager |
 
-### Consequences of Not Updating
+**What happens without the 2023 certificates:**
+- ✅ The PC keeps starting. UEFI firmware does not check certificate expiry dates at boot.
+- ✅ Normal Windows updates keep installing.
+- ❌ No more security updates for the boot process: new boot managers, DB/DBX updates and fixes for newly found boot-level vulnerabilities.
+- ❌ Over time, newer boot media and third-party boot loaders signed only with the 2023 certificates will not start with Secure Boot on.
 
-- ❌ **Computer may NEVER boot into Windows 10/11 again** (Secure Boot failure prevents startup).
-- ❌ **System completely unable to install ANY security updates**.
-- ❌ **All new software and drivers will be unusable**.
-- ❌ **Computer exposed to EXTREME security risks** (cannot patch vulnerabilities).
-- ⚠️ **Risk has increased drastically after June 2026 (the deadline has passed; systems may fail to boot upon installing new updates or drivers)**.
-
----
-
-## Supported Systems
-
-### Windows 10
-
-| Version | Support Status | KB5073724 | ESU Required | End of Support |
-|------|---------|-----------|---------|---------|
-| 22H2 | ✅ Fully Supported | ✅ | ✅ ESU (Extended to 2026-10) | **2025-10-14 (Expired)** |
-| 21H2 | ✅ Fully Supported | ✅ | ❌ Not Supported | 2024-06-11 (Expired) |
-| Enterprise LTSC 2021 | ✅ Fully Supported | ✅ | ✅ **Mandatory** | 2027-01-12 |
-| IoT Enterprise LTSC 2021 | ✅ Fully Supported | ✅ | ✅ **Mandatory** | 2032-01-13 |
-
-### Windows 11
-
-| Version | Support Status | Auto Deployment |
-|------|---------|---------|
-| 25H2 | ✅ Fully Supported | ✅ From 2026-01 |
-| 24H2 | ✅ Fully Supported | ✅ From 2026-01 |
-| 23H2 | ✅ Fully Supported | ⚠️ Manual trigger required |
-| 22H2 | ✅ Fully Supported | ⚠️ Manual trigger required |
+The expired 2011 certificates stay in the firmware next to the 2023 ones, so older boot media keeps working. That is normal.
 
 ---
 
-## Key Features
+## What the tool does
 
-### 1. 🔍 Intelligent Status Detection (Step 1)
-- **Secure Boot Status Check**: Detects if Secure Boot is enabled.
-- **BIOS Certificate Read**: Directly reads certificate info from BIOS/UEFI.
-- **Expiration Warning**: Clearly marks certificate status with Red/Yellow/Green colors.
-- **Old 2011 Certificate Check**: Identifies expired or expiring certificates.
+### 1. Reads the state (changes nothing)
 
-### 2. ⚡ Fully Automatic Updates (Step 2)
-- **Non-ESU Auto-Support**: Automatically downloads updates via Microsoft Update Catalog.
-- **Smart Skip**: Automatically skips download if the target certificate already exists.
-- **Windows 10**: Automatically installs KB5073724.
-- **Windows 11**: Uses monthly updates.
+| What | Where it comes from |
+|---|---|
+| Secure Boot on/off | `Confirm-SecureBootUEFI` |
+| Certificates in KEK and DB, with their real expiry dates | The firmware variables, parsed as EFI signature lists |
+| Windows' own update status | `HKLM\SYSTEM\CurrentControlSet\Control\SecureBoot\Servicing` (`UEFICA2023Status`, `UEFICA2023Error`, `WindowsUEFICA2023Capable`) |
+| Queued update | `AvailableUpdates` |
+| The Secure-Boot-Update scheduled task | Last run and result |
+| BitLocker on the system drive | On/off, recovery key protector |
+| Pending restart | Windows servicing flags |
+| Recent Secure Boot events | System log, source TPM-WMI, with an explanation for each |
 
-### 3. 🚀 Certificate Deployment (Step 3)
-- **Auto Registry Configuration**: Sets `AvailableUpdates`.
-- **New Certificate Deployment**: Writes Windows UEFI CA 2023 to Secure Boot DB.
-- **Deployment Verification**: Confirms write success.
-- **Reboot Management**: Prompts for the required two reboots.
+### 2. Updates (only after you confirm)
 
-### 4. Fully Automatic Download Function 🆕
-- **Auto-Fetch**: Scrapes Microsoft Update Catalog page.
-- **Auto-Parse**: Extracts update GUID and download links.
-- **Auto-Download**: Downloads .cab files.
-- **Auto-Install**: Uses DISM command.
-- **Smart Architecture Detection**: (x64/x86/ARM64).
-- **No Manual Operation Needed** - Completely automated!
+| Step | When | Default |
+|---|---|---|
+| Install **KB5073724** from the Microsoft Update Catalog | Windows 10 21H2/22H2 only, and only if older than build 1904x.6809 | On |
+| Install all pending Windows software updates | Optional (not drivers, not hidden updates) | Off |
+| Suspend BitLocker for 2 restarts | Only if BitLocker is on | Off (asked) |
+| Set `AvailableUpdates = 0x5944` and start the Secure-Boot-Update task | Microsoft's full update: 2023 KEK, 2023 DB certificates and the 2023-signed boot manager | On |
 
-### 5. User-Friendly Interface
-- Colored output, clear and readable.
-- Detailed status reports.
-- Automatic administrator privilege elevation.
-- Clear reboot prompts (twice).
+If Windows has **already queued** an update (for example `0x4100`), the tool does not overwrite it; it only starts the task.
+The old v1.x method (`0x40`, only Windows UEFI CA 2023 in the DB) is still available as an option.
+
+### 3. Shows the result
+
+It reads everything again, explains what is left and asks to restart. The usual sequence is:
+
+1. The task runs → `AvailableUpdates` becomes `0x4100` (certificates applied, boot manager pending).
+2. **Restart**, then run the tool again → the task finishes → `0x4000`, status `Updated`.
+3. One more restart may be needed until Windows starts from the 2023-signed boot manager (`WindowsUEFICA2023Capable = 2`).
+
+If you do not run it again, Windows runs the task by itself within about 12 hours.
 
 ---
 
-## Installation
+## Supported systems
 
-### Method 1: Automatic Installation (Recommended)
+- ✅ Windows 11 (all versions)
+- ✅ Windows 10 22H2 / 21H2, including Enterprise LTSC 2021 and IoT Enterprise LTSC 2021
+- ✅ Windows Server 2016 / 2019 / 2022 / 2025
+- ⚠️ UEFI with Secure Boot. With legacy BIOS (CSM) there is nothing to update in the firmware.
+- ⚠️ The **Secure-Boot-Update** scheduled task must exist (it is part of Windows' Secure Boot servicing in current updates). If it is missing, install the latest cumulative update first.
+- ⚠️ Administrator rights. Internet only for the optional KB5073724 and Windows Update steps.
+
+---
+
+## Command line
 
 ```powershell
-# Run the script (automatically calls PowerShell)
-Double-click RunMe.bat
-
-# The script automatically handles:
-# - Checking and installing KB5073724 (Windows 10)
-# - Checking monthly updates (Windows 11)
-# - Deploying UEFI CA 2023
-# - Verifying certificates
+.\Update-SecureBootCert.ps1 [-CheckOnly] [-Unattended] [-InstallWindowsUpdates] [-SkipKB]
+                            [-DbOnly] [-SuspendBitLocker] [-Restart] [-NoPause] [-LogPath <file>]
 ```
 
-### Fallback: Manual Installation (If Auto-Download Fails)
+| Parameter | What it does |
+|---|---|
+| `-CheckOnly` | Only show the state; change nothing |
+| `-Unattended` | No questions; uses the defaults plus the switches you pass |
+| `-InstallWindowsUpdates` | Also install all pending Windows software updates |
+| `-SkipKB` | Do not install KB5073724 on older Windows 10 |
+| `-DbOnly` | Old method: only add Windows UEFI CA 2023 to the DB (`0x40`) |
+| `-SuspendBitLocker` | Suspend BitLocker for the next 2 restarts |
+| `-Restart` | Restart automatically (after 30 seconds) when needed |
+| `-NoPause` | Do not wait for Enter at the end |
+| `-LogPath` | Where to write the log |
 
-This tool has built-in automatic downloading from the Microsoft Update Catalog. However, if network issues cause failure, you can perform it manually:
+`RunMe.bat` passes its arguments on, for example `RunMe.bat -CheckOnly`.
 
-1. Automatically opens [Microsoft Update Catalog](https://www.catalog.update.microsoft.com/Search.aspx?q=KB5073724).
-2. Select the version matching your system architecture.
-3. Download the `.msu` file.
-4. Double-click to install.
-5. Return to the script to continue.
+**Exit codes**
 
-### Method 2: Enterprise Deployment
+| Code | Meaning |
+|---|---|
+| 0 | Up to date, or nothing to do (also legacy BIOS) |
+| 1 | Error |
+| 2 | Update needed (`-CheckOnly`) or not finished |
+| 3 | Cancelled |
+| 3010 | Restart needed; run the tool again afterwards |
 
-Using WSUS, Intune, or SCCM:
+**Examples**
 
 ```powershell
-# WSUS: Configure Product and Classification
-Product: Windows 10, version 1903 and later
-Classification: Security Updates
+# Report only
+.\Update-SecureBootCert.ps1 -CheckOnly
 
-# Intune: Use Windows Update for Business
-# SCCM: Create Software Update Deployment
+# Silent, for a deployment tool; restarts by itself
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Update-SecureBootCert.ps1 -Unattended -SuspendBitLocker -Restart
 ```
 
 ---
 
-## KB Update Information
+## Reading the status
 
-### KB5073724 (Windows 10 Main Update)
+**`AvailableUpdates`** (`HKLM\SYSTEM\CurrentControlSet\Control\SecureBoot`)
 
-- **Release Date**: January 13, 2026
-- **Build Versions**: 
-  - 19045.6809 (Windows 10 22H2)
-  - 19044.6809 (Windows 10 21H2 / LTSC 2021)
-- **Features**: Includes new Secure Boot certificates (2023 version).
-- **Download**: [Microsoft Update Catalog](https://www.catalog.update.microsoft.com/Search.aspx?q=KB5073724)
+| Value | Meaning |
+|---|---|
+| not set / `0` | Nothing queued |
+| `0x5944` | Full update queued (what this tool sets) |
+| `0x4100` | Certificates applied; restart, then the task installs the boot manager |
+| `0x4000` | Finished |
+| `0x40` | Old method: Windows UEFI CA 2023 queued for the DB |
 
-**Applicable Versions**:
-- Windows 10 Version 22H2 (All editions)
-- Windows 10 Version 21H2 (All editions)
-- Windows 10 Enterprise LTSC 2021 (Requires ESU)
-- Windows 10 IoT Enterprise LTSC 2021 (Requires ESU)
+**`UEFICA2023Status`**: `NotStarted`, `InProgress` or `Updated`. **`UEFICA2023Error`**: 0 when there is no error.
+**`WindowsUEFICA2023Capable`**: 0 = 2023 CA not in the DB, 1 = in the DB, 2 = in the DB and the PC starts from the 2023-signed boot manager.
 
-**Special Notes**:
-- Includes phased Secure Boot certificate deployment.
-- Only devices showing sufficient success signals will receive the new certificate automatically.
-- Removes old modem drivers (agrsm64.sys, agrsm.sys, smserl64.sys, smserial.sys).
+**Events** (System log, source TPM-WMI)
 
-### KB5036210 (UEFI CA 2023 Deployment)
-
-- **Release Date**: February 13, 2024
-- **Applicable Systems**: Windows 10/11 (All editions)
-- **Function**: Deploys Windows UEFI CA 2023 certificate to Secure Boot DB.
-- **Deployment Method**: 
-
-```powershell
-# 1. Set Registry
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot" -Name "AvailableUpdates" -Value 0x40
-
-# 2. Start Scheduled Task
-Start-ScheduledTask -TaskName "\Microsoft\Windows\PI\Secure-Boot-Update"
-
-# 3. Reboot Twice
-
-# 4. Verify
-[System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI db).bytes) -match 'Windows UEFI CA 2023'
-# Should return True
-```
-
-### Servicing Stack Update (SSU)
-
-Depending on your situation, you may need:
-
-- **KB5031539**: For offline images (2023-10-13)
-- **KB5005260**: For WSUS/Standalone packages (2021-08-10)
+| Event | Meaning |
+|---|---|
+| 1808 | Finished: the PC has the 2023 certificates and boot manager |
+| 1799 | Boot manager signed with Windows UEFI CA 2023 installed |
+| 1036 / 1043 / 1044 / 1045 | DB updated / KEK updated / Option ROM CA added / Microsoft UEFI CA 2023 added |
+| 1800 | A restart is needed before the update can continue |
+| 1801 | The 2023 certificates/boot manager are not fully applied yet |
+| 1032 | Not applied: BitLocker would have asked for the recovery key |
+| 1795 / 1796 | Firmware or unexpected error; Windows tries again at the next restart |
+| 1802 | Blocked by Microsoft because of a known firmware issue on this device |
+| 1803 | The KEK cannot be updated: the PC maker has no KEK signed with this PC's platform key |
 
 ---
 
-## LTSC Version Support
+## Windows 10 without ESU
 
-### Support Confirmation
-
-✅ **KB5073724 fully supports Windows 10 LTSC 21H2**, including:
-- Windows 10 Enterprise LTSC 2021 (21H2) - Build 19044.6809
-- Windows 10 IoT Enterprise LTSC 2021 (21H2) - Build 19044.6809
-
-### Support Timeline
-
-| Version | End of Support | Notes |
-|------|-------------|------|
-| Enterprise LTSC 2021 | 2027-01-12 | Requires ESU |
-| IoT Enterprise LTSC 2021 | 2032-01-13 | Longer support |
-
-### ESU Requirements
-
-⚠️ **IMPORTANT**: LTSC version users **MUST join the ESU (Extended Security Updates) program** to receive KB5073724.
-
-**ESU Registration**:
-1. Via Microsoft 365 Admin Center
-2. Via Volume Licensing Service Center (VLSC)
-3. Contact a Microsoft Authorized Reseller
-
-### LTSC Installation Steps
-
-```powershell
-# 1. Ensure ESU program enrollment
-# 2. Run the update tool
-Double-click RunMe.bat
-
-# The tool automatically:
-# - Detects LTSC version
-# - Searches and downloads KB5073724
-# - Installs updates
-# - Deploys UEFI CA 2023
-# - Prompts for two reboots
-```
+- KB5073724 (January 2026) and later cumulative updates for Windows 10 are ESU updates. Without an ESU license they may not install, or Windows can remove them after the restart. The tool skips this step when the PC is already at build .6809 or later.
+- The certificate step does **not** depend on KB5073724. It uses Windows' own Secure-Boot-Update task, which updated Windows 10 builds already have (the DB-only method has been documented by Microsoft since 2024, KB5036210).
+- How much of the full update an older Windows 10 build can do depends on its last installed update. The tool shows exactly what was applied (KEK, DB, boot manager). If the KEK or the boot manager step is not possible, you can still use the old method (`-DbOnly`) to get Windows UEFI CA 2023 into the DB.
 
 ---
 
-## Non-ESU User Guide
+## Troubleshooting
 
-### Situation Overview
-
-- ⚠️ KB5073724 is primarily for **ESU Users**.
-- ⚠️ Non-ESU systems **cannot receive it via Windows Update**.
-- ✅ Can be **downloaded from Microsoft Update Catalog** and installed automatically by this tool.
-- ⚠️ **Note**: Without ESU, the KB installation might act as if "removed" (Rollback) upon reboot. This is normal.
-- ✅ **Solution**: This tool's **Step 3 (Registry Method)** works independently of the KB, forcing the Secure Boot DB update.
-
-### Using This Tool
-
-When running the tool:
-
-1. The tool attempts to automatically download and install KB5073724.
-2. If you lack ESU, installation may appear successful but be removed after reboot.
-3. **DO NOT WORRY!** Please run this tool **AGAIN** after reboot.
-4. The tool will detect the KB is missing but proceed to execute **Step 3**.
-5. **Step 3** forces the Secure Boot DB update via registry.
-
-### Alternatives
-
-If the standalone installer doesn't work:
-
-1. **Upgrade to Windows 11**: Free and continuous updates.
-2. **Get ESU (Extended Support)**: Extend Windows 10 support.
-   - **Free Plan**: Windows 10 users can register for the Consumer ESU program by simply logging in with a Microsoft ID, granting **one year of free extended Windows updates** (until 2026/10/13). ([Official Page](https://www.microsoft.com/en-us/windows/extended-security-updates?r=1))
-3. **Wait**: Microsoft *might* release a non-ESU version before certificate expiration (unless they're feeling generous!).
-4. **Manual Certificate Deployment**: Download certificate files from [Microsoft GitHub](https://github.com/microsoft/secureboot_objects) and install manually.
-
-### Manual Certificate Deployment (Advanced)
-
-```powershell
-# Method 1: Via PowerShell
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot" -Name "AvailableUpdates" -Value 0x40
-Start-ScheduledTask -TaskName "\Microsoft\Windows\PI\Secure-Boot-Update"
-# Reboot twice
-
-# Method 2: Via BIOS
-# 1. Download .bin certificate file from GitHub
-# 2. Reboot into BIOS/UEFI settings
-# 3. Find Secure Boot settings
-# 4. Import the new certificate file
-```
+| What you see | What to do |
+|---|---|
+| Event **1803** (KEK update not possible) | The firmware has no Microsoft-signed KEK update for this PC model. Install the latest BIOS/UEFI update from the PC maker. The DB certificates can still be added. |
+| Event **1802** (blocked, known firmware issue) | Install the latest BIOS/UEFI update, then run the tool again. |
+| Event **1795 / 1796** | The firmware refused the change. Update the BIOS/UEFI; Windows tries again at every restart. |
+| Event **1032** | BitLocker would have gone into recovery. Suspend BitLocker for 2 restarts and run the update again. |
+| "Secure-Boot-Update task NOT FOUND" | Install the latest cumulative update for this Windows. |
+| Status stays `InProgress` | Restart, then run the tool again (it starts the task). Check `UEFICA2023Error` and the events in the tool. |
+| Virtual machines | Secure Boot must be on, and the hypervisor must allow KEK/DB updates. Check your hypervisor's guidance. |
 
 ---
 
-## Technical Principles of Non-ESU Mode
+## If the PC does not start
 
-**This program can install UEFI CA 2023 for you even WITHOUT an ESU subscription, solving all the aforementioned problems!**
+Certificate expiry alone does not stop a PC from starting. If a PC does not start with Secure Boot on after a firmware or boot change:
 
-You might ask: "Microsoft says three certificates are expiring (KEK, UEFI CA, PCA), why focus only on **UEFI CA 2023**?"
+**A. BitLocker asks for the recovery key**: enter the 48-digit key from [aka.ms/myrecoverykey](https://aka.ms/myrecoverykey). Windows starts normally afterwards.
 
-### 1. Trust Chain Mechanism
+**B. Turn Secure Boot off for a moment**
+1. Open the BIOS/UEFI setup (usually `Del`, `F2` or `F10` at power-on).
+2. Set **Secure Boot** to **Disabled**, save and restart.
+3. In Windows, run this tool and let it finish.
+4. Turn **Secure Boot** back on in the BIOS/UEFI setup.
 
-Secure Boot doesn't check if the driver itself is expired, but checks "**who signed it**".
+**C. Add the certificate in the firmware (advanced)**
+1. On another PC, download the certificate files from Microsoft's repository [microsoft/secureboot_objects](https://github.com/microsoft/secureboot_objects), folder `PreSignedObjects/DB/Certificates`: `windows uefi ca 2023.der` (and, for third-party boot loaders, `microsoft uefi ca 2023.der` and `microsoft option rom uefi ca 2023.der`).
+2. Copy them to a FAT32 USB stick.
+3. In the BIOS/UEFI setup, open Secure Boot key management (often under **Custom Mode**) and choose **Append** to **DB (Authorized Signatures)**.
+4. Pick the `.der` file, confirm, save and restart.
 
-*   **Current Situation**: Drivers are signed by Microsoft with old keys; your BIOS trusts old keys via `UEFI CA 2011`.
-*   **After June 2026**: New hardware drivers and software are being signed with **New Keys**, originating from **"Windows UEFI CA 2023"**.
-
-**By adding "Windows UEFI CA 2023" to the BIOS Allowlist (DB):**
-Any driver or system update tracing back to this new source will be considered safe and allowed to load.
-
-### 2. Solving Three Major Issues
-
-| Issue (Certificate Expiry) | Solution (Tool Step 3) | Result |
-| :--- | :--- | :--- |
-| **Microsoft Corporation KEK CA 2011**<br>(Database update failure) | **Force Key Rotation**<br>The registry command triggers BIOS to update the entire trust list. | ✅ Restores database update capability<br>✅ KEK and DB updated in sync |
-| **Microsoft UEFI CA 2011**<br>(Cannot boot new 3rd-party OS/drivers) | **Deploy CA 2023**<br>Adds new root of trust to DB. | ✅ **Allows loading new drivers**<br>✅ Supports new Linux/Windows Bootloaders |
-| **Microsoft Windows Production PCA 2011**<br>(Cannot install Windows updates) | **Deploy CA 2023**<br>Windows update packages use new signatures. | ✅ **Allows update installation**<br>✅ System kernel verification passes |
-
-### 3. Validity of the Non-ESU Method
-
-**Step 3 (Registry Method)** of this tool executes:
-`HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecureBoot\AvailableUpdates = 0x40`
-
-This is not a "hack", but invokes Microsoft's official **Keys Update mechanism**.
-Even without installing KB5073724, as long as the system has this update mechanism built-in (most Windows 10/11 versions do), this command forces the BIOS to read and write new certificate data.
-
-**Conclusion**: As long as the script finally shows a **Green OK (UEFI CA 2023 is in DB)**, your system is immune to the 2026 cliff, regardless of whether the KB installation was rolled back.
+Never change the **PK** or the **KEK** by hand unless you know exactly what you are doing.
 
 ---
 
-## Verifying the Update
+## Legacy BIOS (CSM) users
 
-### Check if KB5073724 is Installed
-
-```powershell
-Get-HotFix -Id "KB5073724"
-```
-
-### Check for 2023 Certificates
-
-```powershell
-Get-ChildItem Cert:\LocalMachine\Root | Where-Object { $_.Subject -match "2023" }
-```
-
-### Check Secure Boot DB
-
-```powershell
-[System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI db).bytes) -match 'Windows UEFI CA 2023'
-# Should return True
-```
-
-### Check System Build
-
-```powershell
-# Windows 10 22H2 should be 19045.6809
-# Windows 10 21H2 should be 19044.6809
-Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" | Select-Object CurrentBuildNumber, UBR
-```
+- In legacy BIOS mode the firmware does not use Secure Boot, so the expiry does not affect starting the PC, and there is nothing for this tool to update. Windows' own driver signing does not depend on these firmware certificates.
+- If you switch to UEFI later (for example to install Windows 11), the firmware may only have the 2011 certificates. Install with Secure Boot off if the media does not start, run this tool in Windows, then turn Secure Boot on.
 
 ---
 
-## Enterprise Deployment
+## Enterprise deployment
 
-### Pre-deployment Preparation
+Microsoft's documented methods (Group Policy, Intune, or the `AvailableUpdates = 0x5944` registry value) are the reference; see the [registry key article](https://support.microsoft.com/en-us/topic/registry-key-updates-for-secure-boot-windows-devices-with-it-managed-updates-a7be69c9-4634-42e1-9ca1-df06f43f360d). Do not write `AvailableUpdatesPolicy` yourself: Group Policy and Intune set it, and Windows uses it for reference only.
 
-1. **Test Environment Verification**
-   - Deploy in test environment first.
-   - Verify compatibility of all critical applications.
-   - Confirm hardware (especially modem) compatibility.
-
-2. **Check OEM Firmware Updates**
-   - Microsoft recommends installing OEM (Dell, HP, Lenovo) firmware updates first.
-   - Firmware updates are foundational for correct Secure Boot updates.
-
-### Deployment Strategies
-
-#### Using WSUS
+This script can also be run silently (`-Unattended`, exit codes above). To check many PCs:
 
 ```powershell
-# Configure Product and Classification
-Product: Windows 10, version 1903 and later
-Classification: Security Updates
-
-# KB5073724 will sync automatically
-```
-
-#### Using Microsoft Intune
-
-```powershell
-# Create Windows Update for Business policy
-# Configure Update Rings:
-# - Test Ring (10% devices)
-# - Production Ring (90% devices)
-```
-
-#### Using Group Policy
-
-```powershell
-# Force Deploy UEFI CA 2023
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot" -Name "AvailableUpdatesPolicy" -Value 0x5944
-```
-
-### Phased Deployment Recommendation
-
-1. **Week 1**: Deploy to 10% pilot machines.
-2. **Week 2**: Monitor and resolve issues.
-3. **Weeks 3-4**: Expand to 50%.
-4. **Weeks 5-6**: Complete remaining 50%.
-
-### Monitoring and Reporting
-
-```powershell
-# Check deployment status
-Get-HotFix -Id "KB5073724" -ComputerName (Get-ADComputer -Filter *).Name
-
-# Check certificate status
-Invoke-Command -ComputerName (Get-ADComputer -Filter *).Name -ScriptBlock {
-    [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI db).bytes) -match 'Windows UEFI CA 2023'
+Invoke-Command -ComputerName PC1, PC2 -ScriptBlock {
+    $s = Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot\Servicing' -ErrorAction SilentlyContinue
+    [pscustomobject]@{ Status = $s.UEFICA2023Status; Error = $s.UEFICA2023Error; Capable = $s.WindowsUEFICA2023Capable }
 }
 ```
 
----
-
-## FAQ
-
-### Q1: I don't see update KB5073724 on my system?
-
-**A**: Please confirm:
-1. Joined ESU program (Mandatory for LTSC, recommended for general Win10).
-2. ESU license properly activated.
-3. Windows Update service running normally.
-4. If still missing, use the **Microsoft Update Catalog** option in this tool to download manually.
-
-### Q2: How many reboots are needed?
-
-**A**: **Two reboots** are required:
-- First Reboot: Download and install Windows updates.
-- Second Reboot: Complete Secure Boot DB update.
-
-### Q3: What if my old modem stops working?
-
-**A**: KB5073724 removes old modem drivers. If you still need them:
-1. Contact hardware manufacturer for updated drivers.
-2. Consider upgrading hardware.
-3. If old hardware is mandatory, you might need to delay this update (not recommended).
-
-### Q4: Are LTSC 2019 or earlier supported?
-
-**A**: KB5073724 is primarily for LTSC 2021 (21H2). Earlier LTSC versions may have different update packages; please check Microsoft documentation.
-
-### Q5: What happens if I don't install it?
-
-**A**: If not installed:
-- Since June 2026, systems with outdated certificates may fail Secure Boot validation.
-- Cannot install new security updates.
-- Cannot use newly signed software and drivers.
-- System security compromised.
-
-### Q6: Does it work in Virtual Machines?
-
-**A**: Yes, but note:
-- VM needs UEFI and Secure Boot enabled.
-- Some virtualization platforms might not fully support Secure Boot DB updates.
-- Recommend testing on physical machine before deploying to virtual environment.
-
-### Q7: What if update fails?
-
-**A**: If update fails:
-1. Check Windows Update logs.
-2. Ensure latest Servicing Stack Update (SSU) is installed.
-3. Try manual download from Microsoft Update Catalog.
-4. Contact Microsoft support.
+Install the PC makers' BIOS/UEFI updates first: many KEK and DB problems are fixed there.
 
 ---
 
-## 🚨 Emergency Rescue (Post-June 2026) 🚨
+## Checking by hand
 
-**If your computer has been locked out of Windows by Secure Boot due to the expired certificate, DO NOT PANIC! Follow these steps to rescue your system.**
+```powershell
+# Windows' own status (expect Updated)
+Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot\Servicing' |
+    Select-Object UEFICA2023Status, UEFICA2023Error, WindowsUEFICA2023Capable
 
-### Method A: Temporarily Disable Secure Boot (Recommended/Fastest)
+# Certificates in the firmware (expect True)
+[Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI KEK).Bytes) -match 'Microsoft Corporation KEK 2K CA 2023'
+[Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI db).Bytes) -match 'Windows UEFI CA 2023'
 
-This is the simplest method, requiring only BIOS setting changes.
+# Queued update
+Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot' -Name AvailableUpdates
 
-1.  **Enter BIOS/UEFI Settings**: Press `Del`, `F2`, or `F10` (depends on manufacturer) continuously during boot.
-2.  **Find Secure Boot Option**: Usually under `Security` or `Boot` tab.
-3.  **Set Secure Boot to `Disabled`**.
-4.  **Save and Restart** (`F10`): You should now be able to boot into Windows normally.
-5.  **Run This Tool**:
-    *   Run `RunMe.bat` (or `Update-SecureBootCert.ps1`) as administrator.
-    *   Select `Y` to start update.
-    *   Wait for the script to complete Step 3 (Deploy Certificates).
-6.  **Re-enable Secure Boot**:
-    *   Restart computer, enter BIOS again.
-    *   Set Secure Boot back to **`Enabled`**.
-    *   Save and Restart.
-7.  **Congratulations!** Your computer now has the new certificates and can operate securely.
-
-### Method B: Manually Import Certificate via BIOS (Advanced)
-
-If you cannot access Windows or Method A fails, you can import certificates directly via BIOS.
-
-**Preparation** (Requires another working computer):
-1.  Prepare a **FAT32 formatted** USB drive.
-2.  Download Microsoft official certificate file (`.bin` format):
-    *   [Windows UEFI CA 2023 Certificate (GitHub)](https://github.com/microsoft/secureboot_objects)
-    *   This link leads to Microsoft's official GitHub repo.
-3.  Copy the `.bin` file to the root of the USB drive.
-
-**Rescue Steps**:
-1.  Plug USB into the faulty computer.
-2.  Boot into BIOS Setup Menu.
-3.  Go to Secure Boot settings page.
-4.  Look for **Key Management** or **Custom Mode**.
-5.  Select **"Enroll Key"** or **"Append to DB"**.
-    *   Note: Select **DB (Authorized Signatures)**. **NEVER** touch PK or KEK unless you know exactly what you are doing.
-6.  Select `No filesystem` or your USB device.
-7.  Select the `.bin` file you just copied.
-8.  Confirm import (Might show "Success").
-9.  Save BIOS settings and restart.
-
----
-
-## BIOS Legacy Mode Users (Post-June 2026)
-
-If you currently boot using the old **Legacy BIOS (CSM)** mode instead of UEFI, please note:
-
-### 1. Booting Unaffected, but Driver Risks Exist
-*   Since Legacy mode doesn't use Secure Boot, you will **NOT** be locked out of boot (BIOS doesn't check DB).
-*   **HOWEVER**, the Windows OS kernel still verifies driver signatures. If your Windows 10 lacks this update, future installation or loading of new hardware drivers signed with new certificates may fail (e.g., installing new NVIDIA drivers might be blocked).
-*   **Recommendation**: Still execute this tool to ensure OS-level compatibility.
-
-### 2. Risks Specific to Future Windows 11 Upgrade/Reinstall
-*   Windows 11 mandates **UEFI + Secure Boot**.
-*   If you decide to switch from Legacy to UEFI and reinstall Windows 11 after June 2026:
-    *   Your old BIOS (with outdated DB) will **refuse to boot** the new Windows 11 installation media (as it's signed with new certificates).
-*   **Solution**:
-    *   Refer to **[Emergency Rescue Method A](#method-a-temporarily-disable-secure-boot-recommendedfastest)** above.
-    *   Specifically: Turn off Secure Boot to install -> Enter Windows and run this tool -> Turn Secure Boot back on.
+# Recent Secure Boot events
+Get-WinEvent -FilterHashtable @{ LogName = 'System'; Id = 1036, 1043, 1799, 1800, 1801, 1803, 1808 } -MaxEvents 10
+```
 
 ---
 
 ## References
 
-### Microsoft Official Documentation
-
-- [Windows Secure Boot Certificate Expiration and CA Update](https://support.microsoft.com/en-us/topic/windows-%E5%AE%89%E5%85%A8%E9%96%8B%E6%A9%9F%E6%86%91%E8%AD%89%E5%88%B0%E6%9C%9F%E5%92%8C-ca-%E6%9B%B4%E6%96%B0-7ff40d33-95dc-4c3c-8725-a9b95457578e)
-- [KB5073724 Official Page](https://support.microsoft.com/en-us/topic/bd960b49-050e-432f-a9d5-2454cb377fed)
-- [KB5036210 - UEFI CA 2023 Deployment](https://support.microsoft.com/en-us/topic/kb5036210-%E5%B0%87-windows-uefi-ca-2023-%E6%86%91%E8%AD%89%E9%83%A8%E7%BD%B2%E5%88%B0%E5%AE%89%E5%85%A8%E9%96%8B%E6%A9%9F%E5%85%81%E8%A8%B1%E7%9A%84%E7%B0%BD%E7%AB%A0%E8%B3%87%E6%96%99%E5%BA%AB-db-a68a3eae-292b-4224-9490-299e303b450b)
-- [Windows 10 LTSC Lifecycle](https://learn.microsoft.com/en-us/lifecycle/products/windows-10-enterprise-ltsc-2021)
-- [ESU Program Information](https://learn.microsoft.com/en-us/windows-server/get-started/extended-security-updates-deploy)
-
-### Download Links
-
-- [Microsoft Update Catalog KB5073724 Download](https://www.catalog.update.microsoft.com/Search.aspx?q=KB5073724)
-- [Secure Boot Objects (GitHub)](https://github.com/microsoft/secureboot_objects)
-
-### Related Articles
-
-- [HKEPC Original Article](https://www.hkepc.com/24893/)
-- [Windows Secure Boot Guide](https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/oem-secure-boot)
+- [Windows Secure Boot certificate expiration and CA updates](https://support.microsoft.com/en-us/topic/windows-secure-boot-certificate-expiration-and-ca-updates-7ff40d33-95dc-4c3c-8725-a9b95457578e) (Microsoft)
+- [Registry key updates for Secure Boot: Windows devices with IT-managed updates](https://support.microsoft.com/en-us/topic/registry-key-updates-for-secure-boot-windows-devices-with-it-managed-updates-a7be69c9-4634-42e1-9ca1-df06f43f360d) (Microsoft)
+- [Secure Boot DB and DBX variable update events](https://support.microsoft.com/en-us/servicing/os/windows/2022/06/secure-boot-db-and-dbx-variable-update-events) (Microsoft)
+- [KB5073724](https://support.microsoft.com/en-us/topic/bd960b49-050e-432f-a9d5-2454cb377fed) and its [Microsoft Update Catalog page](https://www.catalog.update.microsoft.com/Search.aspx?q=KB5073724)
+- [microsoft/secureboot_objects](https://github.com/microsoft/secureboot_objects): the certificate files
 
 ---
 
-**Last Updated**: 2026-07-13  
-**Version**: 1.1  
-**Author**: anomixer
+## Credits
+
+Original tool by **anomixer**. GUI (1.2) and version 2.0 by **j0p3s**.
+
+Use at your own risk. Changing Secure Boot settings affects how the PC starts.
 
 ---
 
 ## Changelog
 
-Current version: **1.2.1**. The full history is in [CHANGELOG.md](CHANGELOG.md).
+Current version: **2.0**. The full history is in [CHANGELOG.md](CHANGELOG.md).
+
+### 2.0 - 2026-10-23
+- **Full update:** installs all the 2023 certificates and the 2023-signed boot manager (`0x5944`), not only Windows UEFI CA 2023. Never overwrites an update Windows has already queued.
+- **Real status:** reads the certificates from the firmware with their real expiry dates, Windows' own update status, the task, BitLocker and the Secure Boot events, with advice for known problems.
+- **Fixes:** the 2011 third-party CA was never detected, Windows Production PCA 2011 showed "expires soon" after it expired, Windows Update results were misread, Windows Server was treated as Windows 10, and more.
+- **New:** command-line parameters and exit codes, log files, optional BitLocker suspension, a GUI that no longer freezes.
 
 ### 1.2.1 - 2026-10-23
-- **Fixed:** a label in the GUI was cut off ("Windows UEFI CA 2023 in the Secure Boot DB").
+- **Fixed:** a label in the GUI was cut off.
 
 ### 1.2 - 2026-10-23
-- **Added** `Update-SecureBootCert-GUI.cmd`: a window with the same steps as the script, where you choose what to do (see [GUI (Optional)](#gui-optional)).
-- The version number is now in the script headers and in the README.
+- **Added** `Update-SecureBootCert-GUI.cmd`.
 
 ### 1.1 - 2026-07-13
 - Adjusted the expired-certificate logic for the post-June 2026 deadline.

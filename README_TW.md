@@ -1,630 +1,317 @@
-# Windows 安全啟動憑證自動更新工具
+# Windows Secure Boot 憑證更新工具
 
-> [!WARNING]
-> **【緊急通知】舊版 Secure Boot 憑證已於 2026 年 6 月到期！請立即下載並執行此工具，將您的 Secure Boot 憑證更新至 2023 版本，以防系統無法開機或無法載入新驅動程式。**
-> **Action Required: The June 2026 deadline has passed! Download and run this tool immediately to update your Secure Boot certificate to the 2023 version to prevent boot failure or driver compatibility issues.**
+> [!IMPORTANT]
+> Microsoft 2011 年版的 Secure Boot 憑證已於 2026 年 6 月至 10 月間陸續到期。沒有 2023 年版憑證的電腦**仍然可以正常開機，也仍會收到一般的 Windows 更新**，但將不再收到開機流程的安全性更新（開機管理員、Secure Boot DB/DBX 更新、撤銷清單）。本工具會檢查您的電腦，並在需要時請 Windows 安裝 2023 年版憑證與以 2023 憑證簽署的開機管理員。
 >
-> 如果您不會使用 Git，可以直接下載已打包的 ZIP 檔案：
-> 📦 **[下載 Update-SecureBootCert.zip](https://github.com/anomixer/Update-SecureBootCert/releases/latest/download/Update-SecureBootCert.zip)**
+> 📦 **[下載 Update-SecureBootCert.zip](https://github.com/j0p3s/Update-SecureBootCert/releases/latest/download/Update-SecureBootCert.zip)**
 
-[English Readme](./README.md)
+[English](./README.md)
 
-> 自動檢查、下載並安裝 Windows 安全啟動憑證更新，確保系統在舊版憑證於 2026 年 6 月到期後仍能正常運作。
+![version](https://img.shields.io/badge/version-2.0-orange) ![platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011%20%7C%20Server-blue)
 
 ## 📑 目錄
 
 - [快速開始](#快速開始)
-- [為什麼需要更新](#為什麼需要更新)
+- [2026 年憑證到期代表什麼](#2026-年憑證到期代表什麼)
+- [本工具做什麼](#本工具做什麼)
 - [支援的系統](#支援的系統)
-- [主要功能](#主要功能)
-- [安裝方式](#安裝方式)
-- [KB 更新資訊](#kb-更新資訊)
-- [LTSC 版本支援](#ltsc-版本支援)
-- [非 ESU 用戶指引](#非-esu-用戶指引)
-- [非 ESU 模式之技術原理：為什麼有效](#非-esu-模式之技術原理為什麼有效)
-- [驗證更新](#驗證更新)
+- [命令列](#命令列)
+- [如何解讀狀態](#如何解讀狀態)
+- [沒有 ESU 的 Windows 10](#沒有-esu-的-windows-10)
+- [疑難排解](#疑難排解)
+- [如果電腦無法開機](#如果電腦無法開機)
+- [Legacy BIOS (CSM) 使用者](#legacy-bios-csm-使用者)
 - [企業部署](#企業部署)
-- [常見問題](#常見問題)
-- [🚨 緊急救援 (2026/6 以後)](#-緊急救援如果已經無法開機-20266-以後-)
-- [BIOS Legacy Mode 用戶注意事項 (2026/6 以後)](#bios-legacy-mode-用戶注意事項-20266-以後)
+- [手動檢查](#手動檢查)
 - [參考資料](#參考資料)
+- [致謝](#致謝)
+- [更新紀錄](#更新紀錄)
 
 ---
 
 ## 快速開始
 
-### 基本使用
+1. 下載 zip 並解壓縮。如果 Windows 封鎖檔案，請在解壓縮前對 zip 按右鍵 →**內容** → 勾選**解除封鎖**。
+2. 開啟以下其中一個（都只會要求一次系統管理員權限）：
+   - **`Update-SecureBootCert-GUI.cmd`**：視窗介面，顯示狀態與選項。
+   - **`RunMe.bat`**：在主控台視窗中執行相同步驟。
+3. 查看上方的狀態。如果顯示尚未更新，請開始更新。在您確認之前不會做任何變更。
+4. 依提示**重新開機**，然後**再次開啟本工具**：它會啟動下一個步驟並確認結果。可能還會要求再重新開機一次。
 
-**一鍵執行（推薦）**
-```
-雙擊執行 RunMe.bat
-```
-- ✅ 最簡單！雙擊即可
-- ✅ 自動請求管理員權限
-- ✅ 自動繞過執行原則
+> [!TIP]
+> 如果電腦使用 **BitLocker**，請先準備好 48 位數的修復金鑰（[aka.ms/myrecoverykey](https://aka.ms/myrecoverykey)），或在工具中選擇**暫停 BitLocker 2 次重新開機**。之後 BitLocker 會自動恢復。
 
-**執行流程**：
-1. 自動請求管理員權限
-2. 檢查憑證狀態
-3. 下載並安裝更新
-4. 部署新憑證到 Secure Boot DB
-5. 提示重新啟動（需要兩次）
-
-### 系統要求
-
-- ✅ Windows 10 (22H2/21H2/LTSC 2021)
-- ✅ Windows 11 (所有版本)
-- ✅ Windows Server 2016/2019/2022/2025
-- ⚠️ 需要管理員權限
-- ⚠️ 需要網路連線
+記錄檔儲存在 `%ProgramData%\Update-SecureBootCert`。
 
 ---
 
-## 為什麼需要更新
+## 2026 年憑證到期代表什麼
 
-### 憑證到期時間表
-
-| 已到期 / 即將到期的舊憑證 | 到期日期 | 新憑證 | 儲存地點 | 目的 |
+| 舊憑證 | 到期日 | 取代為 | 儲存位置 | 用途 |
 |---|---|---|---|---|
-| **Microsoft Corporation KEK CA 2011** | 2026年6月 | Microsoft Corporation KEK 2K CA 2023 | 儲存在 KEK 中 | 簽署資料庫和 DBX 的更新。 |
-| **Microsoft Windows 生產 PCA 2011** | 2026年10月 | Windows UEFI CA 2023 | 儲存在資料庫中 | 用於簽署 Windows 開機載入器。 |
-| **Microsoft UEFI CA 2011*** | 2026年6月 | Microsoft UEFI CA 2023 | 儲存在資料庫中 | 簽署協力廠商開機載入程式和 EFI 應用程式。 |
-| **Microsoft UEFI CA 2011*** | 2026年6月 | Microsoft 選項 ROM UEFI CA 2023 | 儲存在資料庫中 | 簽署第三方選項 ROM |
+| Microsoft Corporation KEK CA 2011 | 2026-06-24 | Microsoft Corporation KEK 2K CA 2023（有效至 2038） | KEK | 簽署 DB 與 DBX 的更新 |
+| Microsoft Corporation UEFI CA 2011 | 2026-06-27 | Microsoft UEFI CA 2023（至 2038） | DB | 第三方開機載入器（Linux shim、工具） |
+| Microsoft Corporation UEFI CA 2011 | 2026-06-27 | Microsoft Option ROM UEFI CA 2023（至 2038） | DB | 第三方 Option ROM（顯示卡、網路卡） |
+| Microsoft Windows Production PCA 2011 | 2026-10-19 | Windows UEFI CA 2023（至 2035） | DB | Windows 開機管理員 |
 
-### 不更新的後果
+**沒有 2023 年版憑證會怎樣：**
+- ✅ 電腦仍可開機。UEFI 韌體在開機時不會檢查憑證的到期日。
+- ✅ 一般的 Windows 更新仍會繼續安裝。
+- ❌ 不再收到開機流程的安全性更新：新的開機管理員、DB/DBX 更新，以及新發現的開機層級漏洞修正。
+- ❌ 日後只以 2023 憑證簽署的新開機媒體與第三方開機載入器，在 Secure Boot 開啟時將無法啟動。
 
-- ❌ **電腦可能再也進不去 Windows 10/11**（Secure Boot 失效後無法啟動）
-- ❌ **系統完全無法安裝任何安全更新**
-- ❌ **所有新的軟體和驅動程式都無法使用**
-- ❌ **電腦暴露在極高的安全風險中**（無法修補漏洞）
-- ⚠️ **2026年6月後風險已急劇增加**（舊憑證已到期，系統隨時可能因安裝新更新或驅動而無法開機）
+過期的 2011 憑證會與 2023 憑證一起保留在韌體中，讓舊的開機媒體仍可使用。這是正常的。
+
+---
+
+## 本工具做什麼
+
+### 1. 讀取狀態（不做任何變更）
+
+| 項目 | 來源 |
+|---|---|
+| Secure Boot 開啟/關閉 | `Confirm-SecureBootUEFI` |
+| KEK 與 DB 中的憑證及其實際到期日 | 韌體變數，以 EFI 簽章清單解析 |
+| Windows 自身的更新狀態 | `HKLM\SYSTEM\CurrentControlSet\Control\SecureBoot\Servicing`（`UEFICA2023Status`、`UEFICA2023Error`、`WindowsUEFICA2023Capable`） |
+| 已排入的更新 | `AvailableUpdates` |
+| Secure-Boot-Update 排程工作 | 上次執行時間與結果 |
+| 系統磁碟的 BitLocker | 開啟/關閉、修復金鑰保護裝置 |
+| 待重新開機 | Windows 服務旗標 |
+| 最近的 Secure Boot 事件 | 系統記錄檔，來源 TPM-WMI，並附說明 |
+
+### 2. 更新（僅在您確認後）
+
+| 步驟 | 條件 | 預設 |
+|---|---|---|
+| 從 Microsoft Update Catalog 安裝 **KB5073724** | 僅限 Windows 10 21H2/22H2，且組建早於 1904x.6809 | 開啟 |
+| 安裝所有待安裝的 Windows 軟體更新 | 選用（不含驅動程式與已隱藏的更新） | 關閉 |
+| 暫停 BitLocker 2 次重新開機 | 僅在 BitLocker 開啟時 | 關閉（會詢問） |
+| 設定 `AvailableUpdates = 0x5944` 並啟動 Secure-Boot-Update 排程工作 | Microsoft 的完整更新：2023 KEK、2023 DB 憑證與以 2023 憑證簽署的開機管理員 | 開啟 |
+
+如果 Windows **已經排入**更新（例如 `0x4100`），本工具不會覆寫，只會啟動排程工作。
+舊的 v1.x 方法（`0x40`，只將 Windows UEFI CA 2023 加入 DB）仍可作為選項使用。
+
+### 3. 顯示結果
+
+工具會重新讀取所有狀態，說明剩下的步驟並詢問是否重新開機。一般流程為：
+
+1. 排程工作執行 → `AvailableUpdates` 變成 `0x4100`（憑證已套用，開機管理員待安裝）。
+2. **重新開機**，再執行本工具 → 排程工作完成 → `0x4000`，狀態 `Updated`。
+3. 可能需要再重新開機一次，直到 Windows 從以 2023 憑證簽署的開機管理員啟動（`WindowsUEFICA2023Capable = 2`）。
+
+如果您沒有再次執行，Windows 也會在大約 12 小時內自行執行該排程工作。
 
 ---
 
 ## 支援的系統
 
-### Windows 10
-
-| 版本 | 支援狀態 | KB5073724 | ESU 要求 | 支援結束 |
-|------|---------|-----------|---------|---------|
-| 22H2 | ✅ 完全支援 | ✅ | ✅ ESU (續命至 2026-10) | **2025-10-14 (已結束)** |
-| 21H2 | ✅ 完全支援 | ✅ | ❌ 不支援 | 2024-06-11 (已結束) |
-| Enterprise LTSC 2021 | ✅ 完全支援 | ✅ | ✅ **必須** | 2027-01-12 |
-| IoT Enterprise LTSC 2021 | ✅ 完全支援 | ✅ | ✅ **必須** | 2032-01-13 |
-
-### Windows 11
-
-| 版本 | 支援狀態 | 自動部署 |
-|------|---------|---------|
-| 25H2 | ✅ 完全支援 | ✅ 2026-01 起 |
-| 24H2 | ✅ 完全支援 | ✅ 2026-01 起 |
-| 23H2 | ✅ 完全支援 | ⚠️ 需手動觸發 |
-| 22H2 | ✅ 完全支援 | ⚠️ 需手動觸發 |
+- ✅ Windows 11（所有版本）
+- ✅ Windows 10 22H2 / 21H2，包含 Enterprise LTSC 2021 與 IoT Enterprise LTSC 2021
+- ✅ Windows Server 2016 / 2019 / 2022 / 2025
+- ⚠️ 需為啟用 Secure Boot 的 UEFI。Legacy BIOS (CSM) 模式下韌體中沒有需要更新的項目。
+- ⚠️ 必須有 **Secure-Boot-Update** 排程工作（屬於目前 Windows 更新中的 Secure Boot 服務）。如果沒有，請先安裝最新的累積更新。
+- ⚠️ 需要系統管理員權限。只有選用的 KB5073724 與 Windows Update 步驟需要網路。
 
 ---
 
-## 主要功能
-
-### 1. 🔍 智能狀態檢測 (Step 1)
-- **Secure Boot 狀態檢查**: 檢測 Secure Boot 是否啟用
-- **BIOS 憑證讀取**: 直接讀取 BIOS/UEFI 中的憑證資訊
-- **到期日預警**: 用紅/黃/綠色清楚標示憑證狀態
-- **檢查 2011 舊憑證**: 識別已到期或即將到期的舊憑證
-
-### 2. ⚡ 全自動更新 (Step 2)
-- **無 ESU 自動支援**: 透過 Microsoft Update Catalog 自動下載更新
-- **智能跳過**: 如果目標憑證已存在，自動跳過下載步驟
-- **Windows 10**: 自動安裝 KB5073724
-- **Windows 11**: 使用每月更新
-
-### 3. 🚀 憑證部署 (Step 3)
-- **自動設定註冊表**: 設定 AvailableUpdates
-- **部署新憑證**: 將 Windows UEFI CA 2023 寫入 Secure Boot DB
-- **驗證部署**: 確認寫入成功
-- **重啟管理**: 提示所需的兩次重啟
-
-### 4. 全自動下載功能 🆕
-- **自動抓取** Microsoft Update Catalog 頁面
-- **自動解析** 更新 GUID 和下載連結
-- **自動下載** .cab 檔案
-- **自動安裝** 使用 DISM 命令
-- **智能架構偵測** (x64/x86/ARM64)
-- **無需手動操作** - 完全自動化！
-
-### 5. 友善的使用者介面
-- 彩色輸出，清晰易讀
-- 詳細的狀態報告
-- 自動管理員權限提升
-- 明確的重啟提示（兩次）
-
----
-
-## 安裝方式
-
-### 方法 1: 自動安裝（推薦）
+## 命令列
 
 ```powershell
-# 執行腳本 (會自動呼叫 PowerShell)
-雙擊 RunMe.bat
-
-# 腳本會自動處理：
-# - 檢查並安裝 KB5073724 (Windows 10)
-# - 檢查每月更新 (Windows 11)
-# - 部署 UEFI CA 2023
-# - 驗證憑證
+.\Update-SecureBootCert.ps1 [-CheckOnly] [-Unattended] [-InstallWindowsUpdates] [-SkipKB]
+                            [-DbOnly] [-SuspendBitLocker] [-Restart] [-NoPause] [-LogPath <檔案>]
 ```
 
-### 備用方案: 手動安裝 (若自動失敗)
+| 參數 | 作用 |
+|---|---|
+| `-CheckOnly` | 只顯示狀態，不做任何變更 |
+| `-Unattended` | 不詢問；使用預設值加上您指定的參數 |
+| `-InstallWindowsUpdates` | 同時安裝所有待安裝的 Windows 軟體更新 |
+| `-SkipKB` | 不在較舊的 Windows 10 上安裝 KB5073724 |
+| `-DbOnly` | 舊方法：只將 Windows UEFI CA 2023 加入 DB（`0x40`） |
+| `-SuspendBitLocker` | 暫停 BitLocker 接下來 2 次重新開機 |
+| `-Restart` | 需要時自動重新開機（30 秒後） |
+| `-NoPause` | 結束時不等待按 Enter |
+| `-LogPath` | 記錄檔的位置 |
 
-本工具內建自動從 Microsoft Update Catalog 下載的功能。但如果因網路問題導致自動下載失敗，您可以手動執行：
+`RunMe.bat` 會將參數傳遞給腳本，例如 `RunMe.bat -CheckOnly`。
 
-1. 自動開啟 [Microsoft Update Catalog](https://www.catalog.update.microsoft.com/Search.aspx?q=KB5073724)
-2. 選擇符合您系統架構的版本
-3. 下載 `.msu` 檔案
-4. 雙擊安裝
-5. 回到腳本繼續
+**結束代碼**
 
-### 方法 2: 企業部署
+| 代碼 | 意義 |
+|---|---|
+| 0 | 已是最新，或無需處理（包含 Legacy BIOS） |
+| 1 | 錯誤 |
+| 2 | 需要更新（`-CheckOnly`）或尚未完成 |
+| 3 | 已取消 |
+| 3010 | 需要重新開機；之後請再執行本工具 |
 
-使用 WSUS、Intune 或 SCCM：
+**範例**
 
 ```powershell
-# WSUS: 設定產品和分類
-產品: Windows 10, version 1903 and later
-分類: Security Updates
+# 僅報告
+.\Update-SecureBootCert.ps1 -CheckOnly
 
-# Intune: 使用 Windows Update for Business
-# SCCM: 建立軟體更新部署
+# 靜默執行（部署工具用），並自動重新開機
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Update-SecureBootCert.ps1 -Unattended -SuspendBitLocker -Restart
 ```
 
 ---
 
-## KB 更新資訊
+## 如何解讀狀態
 
-### KB5073724 (Windows 10 主要更新)
+**`AvailableUpdates`**（`HKLM\SYSTEM\CurrentControlSet\Control\SecureBoot`）
 
-- **發布日期**: 2026年1月13日
-- **組建版本**: 
-  - 19045.6809 (Windows 10 22H2)
-  - 19044.6809 (Windows 10 21H2 / LTSC 2021)
-- **功能**: 包含新的 Secure Boot 憑證 (2023 版本)
-- **下載**: [Microsoft Update Catalog](https://www.catalog.update.microsoft.com/Search.aspx?q=KB5073724)
+| 值 | 意義 |
+|---|---|
+| 未設定 / `0` | 沒有排入的更新 |
+| `0x5944` | 已排入完整更新（本工具設定的值） |
+| `0x4100` | 憑證已套用；重新開機後，排程工作會安裝開機管理員 |
+| `0x4000` | 已完成 |
+| `0x40` | 舊方法：Windows UEFI CA 2023 已排入 DB |
 
-**適用版本**:
-- Windows 10 版本 22H2 (所有版本)
-- Windows 10 版本 21H2 (所有版本)
-- Windows 10 Enterprise LTSC 2021 (需要 ESU)
-- Windows 10 IoT Enterprise LTSC 2021 (需要 ESU)
+**`UEFICA2023Status`**：`NotStarted`、`InProgress` 或 `Updated`。**`UEFICA2023Error`**：沒有錯誤時為 0。
+**`WindowsUEFICA2023Capable`**：0 = DB 中沒有 2023 CA，1 = 已在 DB 中，2 = 已在 DB 中且電腦從以 2023 憑證簽署的開機管理員啟動。
 
-**特別說明**:
-- 包含分階段的安全啟動憑證部署
-- 只有展現足夠成功更新訊號的裝置才會自動收到新憑證
-- 移除了舊的數據機驅動程式 (agrsm64.sys, agrsm.sys, smserl64.sys, smserial.sys)
+**事件**（系統記錄檔，來源 TPM-WMI）
 
-### KB5036210 (UEFI CA 2023 部署)
-
-- **發布日期**: 2024年2月13日
-- **適用系統**: Windows 10/11 (所有版本)
-- **功能**: 部署 Windows UEFI CA 2023 憑證到 Secure Boot DB
-- **部署方式**: 
-
-```powershell
-# 1. 設定註冊表
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot" -Name "AvailableUpdates" -Value 0x40
-
-# 2. 啟動排程任務
-Start-ScheduledTask -TaskName "\Microsoft\Windows\PI\Secure-Boot-Update"
-
-# 3. 重新啟動兩次
-
-# 4. 驗證
-[System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI db).bytes) -match 'Windows UEFI CA 2023'
-# 應該返回 True
-```
-
-### 服務堆疊更新 (SSU)
-
-根據情況可能需要：
-
-- **KB5031539**: 離線映像專用 (2023-10-13)
-- **KB5005260**: WSUS/獨立套件專用 (2021-08-10)
+| 事件 | 意義 |
+|---|---|
+| 1808 | 完成：電腦已有 2023 憑證與開機管理員 |
+| 1799 | 已安裝以 Windows UEFI CA 2023 簽署的開機管理員 |
+| 1036 / 1043 / 1044 / 1045 | DB 已更新 / KEK 已更新 / 已加入 Option ROM CA / 已加入 Microsoft UEFI CA 2023 |
+| 1800 | 需要重新開機才能繼續更新 |
+| 1801 | 2023 憑證/開機管理員尚未完全套用 |
+| 1032 | 未套用：BitLocker 會要求輸入修復金鑰 |
+| 1795 / 1796 | 韌體錯誤或非預期錯誤；Windows 會在下次重新開機時重試 |
+| 1802 | 因此裝置已知的韌體問題而被 Microsoft 封鎖 |
+| 1803 | 無法更新 KEK：電腦製造商沒有以此電腦平台金鑰 (PK) 簽署的 KEK |
 
 ---
 
-## LTSC 版本支援
+## 沒有 ESU 的 Windows 10
 
-### 支援確認
-
-✅ **KB5073724 完全支援 Windows 10 LTSC 21H2**，包括：
-- Windows 10 Enterprise LTSC 2021 (21H2) - Build 19044.6809
-- Windows 10 IoT Enterprise LTSC 2021 (21H2) - Build 19044.6809
-
-### 支援時間表
-
-| 版本 | 支援結束日期 | 備註 |
-|------|-------------|------|
-| Enterprise LTSC 2021 | 2027-01-12 | 需要 ESU |
-| IoT Enterprise LTSC 2021 | 2032-01-13 | 支援時間較長 |
-
-### ESU 要求
-
-⚠️ **重要**: LTSC 版本用戶**必須加入 ESU (Extended Security Updates) 計劃**才能獲得 KB5073724
-
-**ESU 註冊方式**:
-1. 透過 Microsoft 365 管理中心
-2. 透過 Volume Licensing Service Center (VLSC)
-3. 聯繫 Microsoft 授權經銷商
-
-### LTSC 安裝步驟
-
-```powershell
-# 1. 確保已加入 ESU 計劃
-# 2. 執行更新工具
-雙擊 RunMe.bat
-
-# 工具會自動：
-# - 檢測 LTSC 版本
-# - 搜尋並下載 KB5073724
-# - 安裝更新
-# - 部署 UEFI CA 2023
-# - 提示重啟兩次
-```
+- KB5073724（2026 年 1 月）及之後的 Windows 10 累積更新屬於 ESU 更新。沒有 ESU 授權時可能無法安裝，或在重新開機後被 Windows 移除。如果電腦已是組建 .6809 或更新，本工具會略過此步驟。
+- 憑證步驟**不**依賴 KB5073724。它使用 Windows 自身的 Secure-Boot-Update 排程工作，已更新的 Windows 10 組建都有（Microsoft 自 2024 年起已在 KB5036210 中說明只更新 DB 的方法）。
+- 較舊的 Windows 10 組建能完成多少完整更新，取決於最後安裝的更新。本工具會明確顯示套用了哪些項目（KEK、DB、開機管理員）。如果無法完成 KEK 或開機管理員步驟，仍可使用舊方法（`-DbOnly`）將 Windows UEFI CA 2023 加入 DB。
 
 ---
 
-## 非 ESU 用戶指引
+## 疑難排解
 
-### 情況說明
-
-- ⚠️ KB5073724 主要針對 **ESU 用戶**
-- ⚠️ 非 ESU 系統**無法透過 Windows Update** 獲得
-- ✅ 可以從 **Microsoft Update Catalog 下載**，由本工具自動執行
-- ⚠️ **注意**：如果沒有 ESU，KB 安裝後可能會在重啟時被移除（Rollback）。這是正常現象。
-- ✅ **解決方案**：本工具的 **Step 3 (Registry Method)** 可以獨立於 KB 運作，強制更新 Secure Boot DB。
-
-### 使用本工具
-
-當執行工具時：
-
-1. 工具會嘗試自動下載並安裝 KB5073724。
-2. 如果您沒有 ESU，安裝可能會顯示成功，但重啟後被移除。
-3. **不用擔心！** 請在重啟後**再次執行本工具**。
-4. 工具會檢測到 KB 未安裝，但會繼續執行 **Step 3**。
-5. **Step 3** 會透過註冊表強制部署 Secure Boot DB 更新。
-
-### 替代方案
-
-如果獨立安裝程式無法運作：
-
-1. **升級到 Windows 11**: 免費且持續獲得更新
-2. **獲取 ESU (延長支援)**: 延長 Windows 10 支援
-   - **免費方案**: Windows 10 用戶只需登入 Microsoft ID 即可註冊消費者版 ESU 計畫，**免費延長一年**的 Windows 更新權利 (至 2026/10/13 止)。([官方網頁](https://www.microsoft.com/zh-tw/windows/extended-security-updates?r=1))
-3. **等待**: Microsoft 可能會在憑證到期前提供非 ESU 版本 (除非微軟佛心!)
-4. **手動部署憑證**: 從 [Microsoft GitHub](https://github.com/microsoft/secureboot_objects) 下載憑證檔案手動安裝
-
-### 手動憑證部署（進階）
-
-```powershell
-# 方法 1: 透過 PowerShell
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot" -Name "AvailableUpdates" -Value 0x40
-Start-ScheduledTask -TaskName "\Microsoft\Windows\PI\Secure-Boot-Update"
-# 重啟兩次
-
-# 方法 2: 透過 BIOS
-# 1. 從 GitHub 下載 .bin 憑證檔案
-# 2. 重啟進入 BIOS/UEFI 設定
-# 3. 找到 Secure Boot 設定
-# 4. 匯入新的憑證檔案
-```
+| 看到的情況 | 處理方式 |
+|---|---|
+| 事件 **1803**（無法更新 KEK） | 韌體中沒有此電腦型號的 Microsoft 簽署 KEK 更新。請安裝電腦製造商最新的 BIOS/UEFI 更新。DB 憑證仍可加入。 |
+| 事件 **1802**（已知韌體問題而被封鎖） | 安裝最新的 BIOS/UEFI 更新後，再執行本工具。 |
+| 事件 **1795 / 1796** | 韌體拒絕變更。請更新 BIOS/UEFI；Windows 會在每次重新開機時重試。 |
+| 事件 **1032** | BitLocker 會進入修復模式。請暫停 BitLocker 2 次重新開機後再執行更新。 |
+| 「Secure-Boot-Update task NOT FOUND」 | 請安裝此 Windows 最新的累積更新。 |
+| 狀態一直是 `InProgress` | 重新開機後再執行本工具（它會啟動排程工作）。請在工具中查看 `UEFICA2023Error` 與事件。 |
+| 虛擬機器 | 必須開啟 Secure Boot，且虛擬化平台必須允許更新 KEK/DB。請參考您的虛擬化平台說明。 |
 
 ---
 
-## 非 ESU 模式之技術原理：為什麼有效？
+## 如果電腦無法開機
 
-**本程式就算你沒有訂閱 ESU，也能幫你安裝好 UEFI CA 2023，解決上述的所有問題！**
+單純的憑證到期不會讓電腦無法開機。如果在變更韌體或開機設定後，電腦在 Secure Boot 開啟時無法啟動：
 
-您可能會問：「微軟說有三個憑證要過期（KEK, UEFI CA, PCA），為什麼我們只專注於 **UEFI CA 2023**？」
+**A. BitLocker 要求修復金鑰**：輸入 [aka.ms/myrecoverykey](https://aka.ms/myrecoverykey) 中的 48 位數金鑰，之後 Windows 即可正常啟動。
 
-### 1. 信任鏈機制 (Trust Chain)
+**B. 暫時關閉 Secure Boot**
+1. 進入 BIOS/UEFI 設定（開機時通常按 `Del`、`F2` 或 `F10`）。
+2. 將 **Secure Boot** 設為 **Disabled**，儲存並重新開機。
+3. 在 Windows 中執行本工具並等它完成。
+4. 在 BIOS/UEFI 設定中重新開啟 **Secure Boot**。
 
-Secure Boot 的運作並不是檢查驅動程式本身是否過期，而是檢查「**是由誰簽署的**」。
+**C. 在韌體中加入憑證（進階）**
+1. 在另一台電腦上，從 Microsoft 的儲存庫 [microsoft/secureboot_objects](https://github.com/microsoft/secureboot_objects) 的 `PreSignedObjects/DB/Certificates` 資料夾下載憑證檔：`windows uefi ca 2023.der`（若需第三方開機載入器，另加 `microsoft uefi ca 2023.der` 與 `microsoft option rom uefi ca 2023.der`）。
+2. 複製到 FAT32 格式的 USB 隨身碟。
+3. 在 BIOS/UEFI 設定中開啟 Secure Boot 金鑰管理（通常在 **Custom Mode** 下），選擇 **Append** 到 **DB (Authorized Signatures)**。
+4. 選擇 `.der` 檔案，確認、儲存並重新開機。
 
-*   **目前的狀況**：驅動程式由微軟用舊鑰匙簽署，您的 BIOS 透過 `UEFI CA 2011` 信任舊鑰匙。
-*   **2026 年 6 月起**：新硬體驅動程式、軟體已陸續改用 **新密鑰** 簽署，其源頭是 **「Windows UEFI CA 2023」**。
-
-**只要將「Windows UEFI CA 2023」加入 BIOS 的白名單 (DB)：**
-任何追溯到這個新源頭的驅動程式、系統更新，都會被視為安全並允許載入。
-
-### 2. 解決三大問題
-
-| 面臨問題 (憑證過期) | 解決方案 (本工具 Step 3) | 結果 |
-| :--- | :--- | :--- |
-| **Microsoft Corporation KEK CA 2011**<br>(資料庫更新失效) | **強制密鑰輪替**<br>Step 3 觸發的註冊表命令會請求 BIOS 更新整個信任列表。 | ✅ 恢復資料庫更新能力<br>✅ KEK 與 DB 同步更新 |
-| **Microsoft UEFI CA 2011**<br>(無法啟動新第三方系統/驅動) | **部署 CA 2023**<br>將新信任根加入 DB。 | ✅ **允許載入新驅動**<br>✅ 支援新版 Linux/Windows Bootloader |
-| **Microsoft Windows Production PCA 2011**<br>(無法安裝 Windows 更新) | **部署 CA 2023**<br>Windows 更新包使用新憑證簽署。 | ✅ **允許安裝更新**<br>✅ 系統核心驗證通過 |
-
-### 3. 非 ESU 方法的有效性
-
-本工具的 **Step 3 (Registry Method)** 執行的是：
-`HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecureBoot\AvailableUpdates = 0x40`
-
-這不是「破解」，而是調用微軟官方設計的 **Keys Update (密鑰輪替)** 機制。
-即使沒有安裝 KB5073724，只要系統內建了這個更新機制（大多數 Windows 10/11 版本都有），就能透過此命令強制 BIOS 讀取並寫入新的憑證資料。
-
-**結論**：只要腳本最後顯示 **綠色的 OK (UEFI CA 2023 is in DB)**，您的系統就已經具備了 2026 年後的免疫力，無論之前的 KB 安裝是否被回滾。
+除非您完全清楚自己在做什麼，否則絕對不要手動變更 **PK** 或 **KEK**。
 
 ---
 
-## 驗證更新
+## Legacy BIOS (CSM) 使用者
 
-### 檢查 KB5073724 是否已安裝
-
-```powershell
-Get-HotFix -Id "KB5073724"
-```
-
-### 檢查 2023 憑證
-
-```powershell
-Get-ChildItem Cert:\LocalMachine\Root | Where-Object { $_.Subject -match "2023" }
-```
-
-### 檢查 Secure Boot DB
-
-```powershell
-[System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI db).bytes) -match 'Windows UEFI CA 2023'
-# 應該返回 True
-```
-
-### 檢查系統組建
-
-```powershell
-# Windows 10 22H2 應該是 19045.6809
-# Windows 10 21H2 應該是 19044.6809
-Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" | Select-Object CurrentBuildNumber, UBR
-```
+- 在 Legacy BIOS 模式下韌體不使用 Secure Boot，因此憑證到期不影響開機，本工具也沒有需要更新的項目。Windows 自身的驅動程式簽章不依賴這些韌體憑證。
+- 如果日後改用 UEFI（例如安裝 Windows 11），韌體可能只有 2011 憑證。若安裝媒體無法啟動，請在 Secure Boot 關閉時安裝，進入 Windows 後執行本工具，再開啟 Secure Boot。
 
 ---
 
 ## 企業部署
 
-### 部署前準備
+請以 Microsoft 文件說明的方法為準（群組原則、Intune，或登錄值 `AvailableUpdates = 0x5944`），詳見[登錄機碼文章](https://support.microsoft.com/en-us/topic/registry-key-updates-for-secure-boot-windows-devices-with-it-managed-updates-a7be69c9-4634-42e1-9ca1-df06f43f360d)。請勿自行寫入 `AvailableUpdatesPolicy`：它由群組原則與 Intune 設定，Windows 僅將其作為參考。
 
-1. **測試環境驗證**
-   - 先在測試環境部署
-   - 驗證所有關鍵應用程式的相容性
-   - 確認硬體（特別是數據機）的相容性
-
-2. **檢查 OEM 韌體更新**
-   - Microsoft 建議先安裝 OEM（Dell, HP, Lenovo）的韌體更新
-   - 韌體更新是 Secure Boot 更新正確應用的基礎
-
-### 部署方式
-
-#### 使用 WSUS
+本腳本也可以靜默執行（`-Unattended`，結束代碼如上）。檢查多台電腦：
 
 ```powershell
-# 設定產品和分類
-產品: Windows 10, version 1903 and later
-分類: Security Updates
-
-# KB5073724 會自動同步
-```
-
-#### 使用 Microsoft Intune
-
-```powershell
-# 建立 Windows Update for Business 原則
-# 設定更新環：
-# - 測試環 (10% 裝置)
-# - 生產環 (90% 裝置)
-```
-
-#### 使用 Group Policy
-
-```powershell
-# 強制部署 UEFI CA 2023
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot" -Name "AvailableUpdatesPolicy" -Value 0x5944
-```
-
-### 分階段部署建議
-
-1. **第 1 週**: 部署到 10% 試點機器
-2. **第 2 週**: 監控並解決問題
-3. **第 3-4 週**: 逐步擴大到 50%
-4. **第 5-6 週**: 完成剩餘 50%
-
-### 監控與報告
-
-```powershell
-# 檢查部署狀態
-Get-HotFix -Id "KB5073724" -ComputerName (Get-ADComputer -Filter *).Name
-
-# 檢查憑證狀態
-Invoke-Command -ComputerName (Get-ADComputer -Filter *).Name -ScriptBlock {
-    [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI db).bytes) -match 'Windows UEFI CA 2023'
+Invoke-Command -ComputerName PC1, PC2 -ScriptBlock {
+    $s = Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot\Servicing' -ErrorAction SilentlyContinue
+    [pscustomobject]@{ Status = $s.UEFICA2023Status; Error = $s.UEFICA2023Error; Capable = $s.WindowsUEFICA2023Capable }
 }
 ```
 
----
-
-## 常見問題
-
-### Q1: 我的系統沒有看到 KB5073724 更新？
-
-**A**: 請確認：
-1. 已加入 ESU 計劃（LTSC 用戶必須，一般 Win10 用戶也建議加入）
-2. ESU 授權已正確啟用
-3. Windows Update 服務正常運作
-4. 如果仍然沒有，使用本工具的 Microsoft Update Catalog 選項手動下載
-
-### Q2: 安裝後需要重新啟動幾次？
-
-**A**: 需要重新啟動**兩次**：
-- 第一次重啟：下載與安裝 Windows 更新
-- 第二次重啟：完成 Secure Boot DB 更新
-
-### Q3: 我的舊數據機不能用了怎麼辦？
-
-**A**: KB5073724 移除了舊的數據機驅動程式。如果您仍需使用：
-1. 聯繫硬體製造商獲取更新的驅動程式
-2. 考慮升級硬體
-3. 如果必須使用舊硬體，可能需要延遲安裝此更新（不推薦）
-
-### Q4: LTSC 2019 或更早版本支援嗎？
-
-**A**: KB5073724 主要針對 LTSC 2021 (21H2)。更早的 LTSC 版本可能有不同的更新包，請查看 Microsoft 官方文件。
-
-### Q5: 不安裝會怎樣？
-
-**A**: 如果不安裝：
-- 舊憑證已於 2026 年 6 月到期，未更新的 Secure Boot 功能隨時可能失效
-- 無法安裝新的安全更新
-- 無法使用新簽署的軟體和驅動程式
-- 系統安全性嚴重受損
-
-### Q6: 可以在虛擬機中使用嗎？
-
-**A**: 可以，但需要注意：
-- 虛擬機需要啟用 UEFI 和 Secure Boot
-- 某些虛擬化平台可能不完全支援 Secure Boot DB 更新
-- 建議在實體機上測試後再部署到虛擬環境
-
-### Q7: 更新失敗怎麼辦？
-
-**A**: 如果更新失敗：
-1. 檢查 Windows Update 日誌
-2. 確保已安裝最新的服務堆疊更新 (SSU)
-3. 嘗試從 Microsoft Update Catalog 手動下載
-4. 聯繫 Microsoft 支援
+請先安裝電腦製造商的 BIOS/UEFI 更新：許多 KEK 與 DB 的問題都在其中修正。
 
 ---
 
-## 🚨 緊急救援：如果已經無法開機 (2026/6 以後) 🚨
+## 手動檢查
 
-**如果您的電腦目前已因舊憑證到期而遭到 Secure Boot 封鎖、無法進入 Windows，先別慌！請按照以下步驟自救。**
+```powershell
+# Windows 自身的狀態（應為 Updated）
+Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot\Servicing' |
+    Select-Object UEFICA2023Status, UEFICA2023Error, WindowsUEFICA2023Capable
 
-### 方法 A：暫時關閉 Secure Boot (最推薦/最快速)
+# 韌體中的憑證（應為 True）
+[Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI KEK).Bytes) -match 'Microsoft Corporation KEK 2K CA 2023'
+[Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI db).Bytes) -match 'Windows UEFI CA 2023'
 
-這是最簡單的方法，只需要進入 BIOS 修改設定。
+# 已排入的更新
+Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot' -Name AvailableUpdates
 
-1.  **進入 BIOS/UEFI 設定**：開機時狂按 `Del`、`F2` 或 `F10` (視廠牌而定)。
-2.  **找到 Secure Boot 選項**：通常在 `Security` 或 `Boot` 分頁。
-3.  **將 Secure Boot 設定為 `Disabled` (關閉)**。
-4.  **儲存並重啟** (`F10`)：現在您應該可以正常進入 Windows 了。
-5.  **執行本工具**：
-    *   以管理員身分執行 `RunMe.bat` (或 `Update-SecureBootCert.ps1`)。
-    *   選擇 `Y` 開始更新。
-    *   等待腳本完成 Step 3 (部署憑證)。
-6.  **恢復 Secure Boot**：
-    *   重啟電腦，再次進入 BIOS。
-    *   將 Secure Boot 設定回 **`Enabled` (開啟)**。
-    *   儲存並重啟。
-7.  **恭喜！** 您的電腦已經擁有新憑證，可以安全運作了。
-
-### 方法 B：透過 BIOS 手動匯入憑證 (進階)
-
-如果您無法進入 Windows，或者方法 A 無效，可以透過 BIOS 直接匯入憑證檔案。
-
-**準備工作** (需要另一台可用的電腦)：
-1.  準備一支 **FAT32 格式** 的 USB隨身碟。
-2.  下載 Microsoft 官方憑證檔案 (`.bin` 格式)：
-    *   [Windows UEFI CA 2023 憑證 (GitHub)](https://github.com/microsoft/secureboot_objects)
-    *   此連結會導向 Microsoft 官方 GitHub 儲存庫。
-3.  將 `.bin` 檔案複製到 USB 隨身碟根目錄。
-
-**救援步驟**：
-1.  將 USB 插上故障電腦。
-2.  開機進入 BIOS 設定選單。
-3.  進入 Secure Boot 設定頁面。
-4.  尋找 **Key Management** (金鑰管理) 或 **Custom Mode** (自訂模式)。
-5.  選擇 **"Enroll Key"** (匯入金鑰) 或 **"Append to DB"** (新增至 DB)。
-    *   注意：是選 **DB (Authorized Signatures)**，**絕對不要**動 PK 或 KEK，除非您很清楚自己在做什麼。
-6.  選擇 `No filesystem` 或您的 USB 裝置。
-7.  選取剛剛放入的 `.bin` 檔案。
-8.  確認匯入 (可能顯示 "Success")。
-9.  儲存 BIOS 設定並重啟。
-
----
-
-## BIOS Legacy Mode 用戶注意事項 (2026/6 以後)
-
-如果您目前是使用舊版 **Legacy BIOS (CSM)** 模式而非 UEFI 模式開機，請注意以下幾點：
-
-### 1. 開機不受影響，但驅動程式有風險
-*   因為 Legacy 模式不使用 Secure Boot，所以**不會**發生無法開機的情況 (BIOS 不會檢查 DB)。
-*   **但是**，Windows 作業系統核心仍會驗證驅動程式的簽章。若您的 Windows 10 未安裝本更新，未來可能無法安裝或載入使用新憑證簽署的新硬體驅動程式 (例如安裝新版NVIDIA Driver時，就會被擋)。
-*   **建議**：仍建議執行本工具安裝更新，以確保 OS 層級的相容性。
-
-### 2. 未來升級/重灌 Windows 11 的風險
-*   Windows 11 強制要求 **UEFI + Secure Boot** 環境。
-*   如果您在 2026/6 後決定將電腦從 Legacy 轉為 UEFI 並重灌 Windows 11：
-    *   您的舊 BIOS (尚未更新 DB) 將會**拒絕啟動**新的 Windows 11 安裝隨身碟 (因其使用新憑證簽署)。
-*   **解決方案**：
-    *   請參考上方的 **[緊急救援方案 A](#方法-a-暫時關閉-secure-boot-最推薦最快速)**。
-    *   也就是：先**關閉 Secure Boot** 進行安裝 -> 進入 Windows 執行本工具 -> 再**開啟 Secure Boot**。
-
----
-
-## 重要注意事項
-
-### 安裝前
-
-- ✅ 建立系統還原點或完整備份
-- ✅ 確保有足夠的磁碟空間（至少 1GB）
-- ✅ 關閉防毒軟體（安裝期間）
-- ✅ 確保網路連線穩定
-
-### 安裝中
-
-- ⚠️ 不要中斷安裝過程
-- ⚠️ 不要關閉電腦
-- ⚠️ 等待所有更新完成
-
-### 安裝後
-
-- ✅ 重新啟動兩次
-- ✅ 驗證憑證安裝
-- ✅ 檢查系統組建版本
-- ✅ 測試關鍵應用程式
+# 最近的 Secure Boot 事件
+Get-WinEvent -FilterHashtable @{ LogName = 'System'; Id = 1036, 1043, 1799, 1800, 1801, 1803, 1808 } -MaxEvents 10
+```
 
 ---
 
 ## 參考資料
 
-### Microsoft 官方文件
-
-- [Windows 安全開機憑證到期和 CA 更新](https://support.microsoft.com/zh-tw/topic/windows-%E5%AE%89%E5%85%A8%E9%96%8B%E6%A9%9F%E6%86%91%E8%AD%89%E5%88%B0%E6%9C%9F%E5%92%8C-ca-%E6%9B%B4%E6%96%B0-7ff40d33-95dc-4c3c-8725-a9b95457578e)
-- [KB5073724 官方頁面](https://support.microsoft.com/zh-tw/topic/bd960b49-050e-432f-a9d5-2454cb377fed)
-- [KB5036210 - UEFI CA 2023 部署](https://support.microsoft.com/zh-tw/topic/kb5036210-%E5%B0%87-windows-uefi-ca-2023-%E6%86%91%E8%AD%89%E9%83%A8%E7%BD%B2%E5%88%B0%E5%AE%89%E5%85%A8%E9%96%8B%E6%A9%9F%E5%85%81%E8%A8%B1%E7%9A%84%E7%B0%BD%E7%AB%A0%E8%B3%87%E6%96%99%E5%BA%AB-db-a68a3eae-292b-4224-9490-299e303b450b)
-- [Windows 10 LTSC 生命週期](https://learn.microsoft.com/zh-tw/lifecycle/products/windows-10-enterprise-ltsc-2021)
-- [ESU 計劃資訊](https://learn.microsoft.com/zh-tw/windows-server/get-started/extended-security-updates-deploy)
-
-### 下載連結
-
-- [Microsoft Update Catalog KB5073724 下載](https://www.catalog.update.microsoft.com/Search.aspx?q=KB5073724)
-- [Secure Boot Objects (GitHub)](https://github.com/microsoft/secureboot_objects)
-
-### 相關文章
-
-- [HKEPC 原始文章](https://www.hkepc.com/24893/)
-- [Windows安全開機指南](https://learn.microsoft.com/zh-tw/windows-hardware/design/device-experiences/oem-secure-boot)
+- [Windows 安全開機憑證到期和 CA 更新](https://support.microsoft.com/zh-tw/topic/windows-%E5%AE%89%E5%85%A8%E9%96%8B%E6%A9%9F%E6%86%91%E8%AD%89%E5%88%B0%E6%9C%9F%E5%92%8C-ca-%E6%9B%B4%E6%96%B0-7ff40d33-95dc-4c3c-8725-a9b95457578e)（Microsoft）
+- [Registry key updates for Secure Boot: Windows devices with IT-managed updates](https://support.microsoft.com/en-us/topic/registry-key-updates-for-secure-boot-windows-devices-with-it-managed-updates-a7be69c9-4634-42e1-9ca1-df06f43f360d)（Microsoft，英文）
+- [Secure Boot DB and DBX variable update events](https://support.microsoft.com/en-us/servicing/os/windows/2022/06/secure-boot-db-and-dbx-variable-update-events)（Microsoft，英文）
+- [KB5073724 官方頁面](https://support.microsoft.com/zh-tw/topic/bd960b49-050e-432f-a9d5-2454cb377fed) 及其 [Microsoft Update Catalog 頁面](https://www.catalog.update.microsoft.com/Search.aspx?q=KB5073724)
+- [microsoft/secureboot_objects](https://github.com/microsoft/secureboot_objects)：憑證檔案
 
 ---
 
-## 授權
+## 致謝
 
-此工具為開源工具，供個人和企業免費使用。
+原始工具作者 **anomixer**。GUI（1.2）與 2.0 版由 **j0p3s** 製作。
 
-## 支援
-
-如有問題，請：
-1. 查看本文件的[常見問題](#常見問題)部分
-2. 參考 Microsoft 官方文件
-3. 聯繫系統管理員或 Microsoft 支援
+使用風險自負。變更 Secure Boot 設定會影響電腦的開機方式。
 
 ---
 
-**最後更新**: 2026-07-13  
-**版本**: 1.1  
-**作者**: anomixer
+## 更新紀錄
+
+目前版本：**2.0**。完整紀錄請見 [CHANGELOG.md](CHANGELOG.md)（英文）。
+
+### 2.0 - 2026-10-23
+- **完整更新：**安裝所有 2023 憑證與以 2023 憑證簽署的開機管理員（`0x5944`），而不只是 Windows UEFI CA 2023。不會覆寫 Windows 已排入的更新。
+- **真實狀態：**從韌體讀取憑證及其實際到期日，並讀取 Windows 自身的更新狀態、排程工作、BitLocker 與 Secure Boot 事件，針對已知問題提供建議。
+- **修正：**從未偵測到 2011 第三方 CA、Windows Production PCA 2011 到期後仍顯示「即將到期」、誤讀 Windows Update 結果、將 Windows Server 當成 Windows 10 等問題。
+- **新增：**命令列參數與結束代碼、記錄檔、選用的 BitLocker 暫停、不再凍結的 GUI。
+
+### 1.2.1 - 2026-10-23
+- **修正：**GUI 中的一個標籤被截斷。
+
+### 1.2 - 2026-10-23
+- **新增** `Update-SecureBootCert-GUI.cmd`。
+
+### 1.1 - 2026-07-13
+- 針對 2026 年 6 月期限後調整過期憑證的判斷邏輯。
+
+### 1.0 - 2026-01-26
+- 第一版。
