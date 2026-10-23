@@ -8,6 +8,8 @@
 
 [中文說明 (Traditional Chinese)](./README_TW.md)
 
+![version](https://img.shields.io/badge/version-1.2-orange) ![platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-blue)
+
 > Automatically checks, downloads, and installs Windows Secure Boot certificate updates, ensuring your system continues to function correctly after the certificate expiration in June 2026.
 
 ## 📑 Table of Contents
@@ -27,6 +29,7 @@
 - [🚨 Emergency Rescue (Post-June 2026)](#-emergency-rescue-post-june-2026-)
 - [BIOS Legacy Mode Users (Post-June 2026)](#bios-legacy-mode-users-post-june-2026)
 - [References](#references)
+- [Changelog](#changelog)
 
 ---
 
@@ -48,6 +51,17 @@ Double-click RunMe.bat
 3. Downloads and installs updates.
 4. Deploys new certificates to the Secure Boot DB.
 5. Prompts for reboot (two reboots required).
+
+### GUI (Optional)
+
+```
+Double-click Update-SecureBootCert-GUI.cmd
+```
+- A window that does the same steps as the script, but lets you choose what to do.
+- Shows Secure Boot, the Windows version and the certificates found in the firmware (KEK and DB), with their status.
+- Tick the steps you want: install KB5073724 (Windows 10 only), install all pending Windows updates, and deploy Windows UEFI CA 2023 to the Secure Boot DB.
+- Nothing is changed until you click **Start update** and confirm. A **Restart now** button appears when a restart is needed (two restarts are required).
+- Asks for administrator rights once (UAC). Works with the same requirements as the script.
 
 ### System Requirements
 
@@ -590,3 +604,19 @@ If you currently boot using the old **Legacy BIOS (CSM)** mode instead of UEFI, 
 **Last Updated**: 2026-07-13  
 **Version**: 1.1  
 **Author**: anomixer
+
+---
+
+## Changelog
+
+Current version: **1.2**. The full history is in [CHANGELOG.md](CHANGELOG.md).
+
+### 1.2 - 2026-10-23
+- **Added** `Update-SecureBootCert-GUI.cmd`: a window with the same steps as the script, where you choose what to do (see [GUI (Optional)](#gui-optional)).
+- The version number is now in the script headers and in the README.
+
+### 1.1 - 2026-07-13
+- Adjusted the expired-certificate logic for the post-June 2026 deadline.
+
+### 1.0 - 2026-01-26
+- First version.

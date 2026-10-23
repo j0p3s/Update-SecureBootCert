@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM SecureBootCertFix - One-Click Launcher (Auto Admin)
+REM SecureBootCertFix v1.2 - One-Click Launcher (Auto Admin)
 REM ============================================================
 REM This batch file automatically requests administrator rights
 REM and runs the PowerShell script.

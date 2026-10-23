@@ -1,6 +1,7 @@
 # ============================================================
 # Windows Security Boot Certificate Auto Update Tool
 # ============================================================
+# Version: 1.2
 # Function: Automatically update Windows 10/11 security certificates
 #   - KEK CA 2011 -> KEK CA 2023
 #   - UEFI CA 2011 -> UEFI CA 2023
