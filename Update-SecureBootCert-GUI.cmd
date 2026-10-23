@@ -1,7 +1,7 @@
 <# : batch
 @echo off
 REM ---------------------------------------------------------------------------
-REM  Secure Boot Certificate Updater (GUI) v1.2 - batch/PowerShell hybrid launcher.
+REM  Secure Boot Certificate Updater (GUI) v1.2.1 - batch/PowerShell hybrid launcher.
 REM  cmd.exe runs only these few lines; to PowerShell, this whole header is a
 REM  block comment. The batch part passes this file's own path to
 REM  Windows PowerShell, which reads the rest of the file and opens the window.
@@ -18,7 +18,7 @@ exit /b
 #>
 
 # =============================================================================
-#  Secure Boot Certificate Updater - GUI v1.2
+#  Secure Boot Certificate Updater - GUI v1.2.1
 #
 #  A window for the steps of Update-SecureBootCert.ps1 (same actions, same
 #  order), so you can see the state of the certificates and choose what to do:
@@ -33,7 +33,7 @@ exit /b
 #  Nothing is changed until you click "Start update" and confirm.
 # =============================================================================
 
-$AppVersion = '1.2'
+$AppVersion = '1.2.1'
 
 # Known certificates: where they are stored, the text found in the firmware, and how to show them
 $CertDefs = @(
@@ -299,16 +299,16 @@ try {
     $form.Controls.Add($lblTitle)
 
     # --- State ---
-    $lblSbCap = New-Label 'Secure Boot' 16 48 250 20;                                 $lblSbCap.ForeColor = $cMuted
-    $lblSb    = New-Label '' 270 48 610 20
-    $lblOsCap = New-Label 'Windows' 16 70 250 20;                                     $lblOsCap.ForeColor = $cMuted
-    $lblOs    = New-Label '' 270 70 610 20
-    $lblDbCap = New-Label 'Windows UEFI CA 2023 in the Secure Boot DB' 16 92 250 20;  $lblDbCap.ForeColor = $cMuted
-    $lblDb    = New-Label '' 270 92 610 20
-    $lblKbCap = New-Label 'KB5073724 (Windows 10 only)' 16 114 250 20;               $lblKbCap.ForeColor = $cMuted
-    $lblKb    = New-Label '' 270 114 610 20
-    $lblRgCap = New-Label 'Pending update flag (AvailableUpdates)' 16 136 250 20;    $lblRgCap.ForeColor = $cMuted
-    $lblRg    = New-Label '' 270 136 610 20
+    $lblSbCap = New-Label 'Secure Boot' 16 48 284 20;                                 $lblSbCap.ForeColor = $cMuted
+    $lblSb    = New-Label '' 304 48 580 20
+    $lblOsCap = New-Label 'Windows' 16 70 284 20;                                     $lblOsCap.ForeColor = $cMuted
+    $lblOs    = New-Label '' 304 70 580 20
+    $lblDbCap = New-Label 'Windows UEFI CA 2023 in the Secure Boot DB' 16 92 284 20;  $lblDbCap.ForeColor = $cMuted
+    $lblDb    = New-Label '' 304 92 580 20
+    $lblKbCap = New-Label 'KB5073724 (Windows 10 only)' 16 114 284 20;               $lblKbCap.ForeColor = $cMuted
+    $lblKb    = New-Label '' 304 114 580 20
+    $lblRgCap = New-Label 'Pending update flag (AvailableUpdates)' 16 136 284 20;    $lblRgCap.ForeColor = $cMuted
+    $lblRg    = New-Label '' 304 136 580 20
     foreach ($c in $lblSbCap, $lblSb, $lblOsCap, $lblOs, $lblDbCap, $lblDb, $lblKbCap, $lblKb, $lblRgCap, $lblRg) { $form.Controls.Add($c) }
 
     $lblSummary = New-Label '' 16 162 868 24

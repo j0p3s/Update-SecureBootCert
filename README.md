@@ -8,7 +8,7 @@
 
 [中文說明 (Traditional Chinese)](./README_TW.md)
 
-![version](https://img.shields.io/badge/version-1.2-orange) ![platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-blue)
+![version](https://img.shields.io/badge/version-1.2.1-orange) ![platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-blue)
 
 > Automatically checks, downloads, and installs Windows Secure Boot certificate updates, ensuring your system continues to function correctly after the certificate expiration in June 2026.
 
@@ -609,7 +609,10 @@ If you currently boot using the old **Legacy BIOS (CSM)** mode instead of UEFI, 
 
 ## Changelog
 
-Current version: **1.2**. The full history is in [CHANGELOG.md](CHANGELOG.md).
+Current version: **1.2.1**. The full history is in [CHANGELOG.md](CHANGELOG.md).
+
+### 1.2.1 - 2026-10-23
+- **Fixed:** a label in the GUI was cut off ("Windows UEFI CA 2023 in the Secure Boot DB").
 
 ### 1.2 - 2026-10-23
 - **Added** `Update-SecureBootCert-GUI.cmd`: a window with the same steps as the script, where you choose what to do (see [GUI (Optional)](#gui-optional)).

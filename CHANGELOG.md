@@ -1,6 +1,14 @@
 # Changelog
 
-All notable changes to this project are listed here, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions use `major.minor`.
+All notable changes to this project are listed here, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions use `major.minor` (and `.patch` for small fixes).
+
+## [1.2.1] - 2026-10-23
+
+### Fixed
+- The GUI label "Windows UEFI CA 2023 in the Secure Boot DB" was cut off. The captions column is wider now.
+
+### Changed
+- Version number 1.2.1 in the GUI, `Update-SecureBootCert.ps1`, `RunMe.bat` and the README.
 
 ## [1.2] - 2026-10-23
 
@@ -32,6 +40,7 @@ All notable changes to this project are listed here, newest first. The format fo
 ### Added
 - First version: `Update-SecureBootCert.ps1`, `RunMe.bat` and the READMEs (English and Traditional Chinese).
 
+[1.2.1]: ../../releases/tag/v1.2.1
 [1.2]: ../../releases/tag/v1.2
 [1.1]: ../../releases/tag/v1.1
 [1.0]: ../../releases/tag/v1.0
