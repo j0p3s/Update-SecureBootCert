@@ -49,6 +49,17 @@ Double-click RunMe.bat
 4. Deploys new certificates to the Secure Boot DB.
 5. Prompts for reboot (two reboots required).
 
+### GUI (Optional)
+
+```
+Double-click Update-SecureBootCert-GUI.cmd
+```
+- A window that does the same steps as the script, but lets you choose what to do.
+- Shows Secure Boot, the Windows version and the certificates found in the firmware (KEK and DB), with their status.
+- Tick the steps you want: install KB5073724 (Windows 10 only), install all pending Windows updates, and deploy Windows UEFI CA 2023 to the Secure Boot DB.
+- Nothing is changed until you click **Start update** and confirm. A **Restart now** button appears when a restart is needed (two restarts are required).
+- Asks for administrator rights once (UAC). Works with the same requirements as the script.
+
 ### System Requirements
 
 - ✅ Windows 10 (22H2/21H2/LTSC 2021)
