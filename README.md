@@ -12,6 +12,7 @@
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [Screenshots](#screenshots)
 - [What the 2026 expiry means](#what-the-2026-expiry-means)
 - [What the tool does](#what-the-tool-does)
 - [Supported systems](#supported-systems)
@@ -42,6 +43,22 @@
 > If the PC uses **BitLocker**, have the 48-digit recovery key ready ([aka.ms/myrecoverykey](https://aka.ms/myrecoverykey)), or choose **Suspend BitLocker for 2 restarts** in the tool. BitLocker turns back on by itself.
 
 Logs are saved in `%ProgramData%\Update-SecureBootCert`.
+
+---
+
+## Screenshots
+
+The GUI (`Update-SecureBootCert-GUI.cmd`) on a Windows 10 PC that is partly updated. It shows the result at the top, the state of the PC, and the certificates found in the firmware.
+
+![Main window with the status and the certificates in the firmware](docs/screenshots/gui-certificates.png)
+
+The **Recent Secure Boot events** tab lists the Secure Boot messages from the System log with an explanation for each.
+
+![Recent Secure Boot events tab](docs/screenshots/gui-events.png)
+
+Nothing is changed until you click **Start update** and confirm.
+
+![Confirmation before the update starts](docs/screenshots/gui-confirm.png)
 
 ---
 

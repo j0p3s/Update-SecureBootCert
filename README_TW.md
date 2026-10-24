@@ -12,6 +12,7 @@
 ## 📑 目錄
 
 - [快速開始](#快速開始)
+- [螢幕截圖](#螢幕截圖)
 - [2026 年憑證到期代表什麼](#2026-年憑證到期代表什麼)
 - [本工具做什麼](#本工具做什麼)
 - [支援的系統](#支援的系統)
@@ -42,6 +43,22 @@
 > 如果電腦使用 **BitLocker**，請先準備好 48 位數的修復金鑰（[aka.ms/myrecoverykey](https://aka.ms/myrecoverykey)），或在工具中選擇**暫停 BitLocker 2 次重新開機**。之後 BitLocker 會自動恢復。
 
 記錄檔儲存在 `%ProgramData%\Update-SecureBootCert`。
+
+---
+
+## 螢幕截圖
+
+在部分更新的 Windows 10 電腦上執行 GUI（`Update-SecureBootCert-GUI.cmd`）。上方顯示結果，其下是電腦狀態與韌體中找到的憑證。
+
+![主視窗：狀態與韌體中的憑證](docs/screenshots/gui-certificates.png)
+
+**Recent Secure Boot events** 分頁列出系統記錄中的 Secure Boot 訊息，並附上說明。
+
+![Secure Boot 事件分頁](docs/screenshots/gui-events.png)
+
+在您按下 **Start update** 並確認之前，不會做任何變更。
+
+![開始更新前的確認視窗](docs/screenshots/gui-confirm.png)
 
 ---
 

@@ -44,7 +44,7 @@ A rewrite of the script and the GUI. Both now share the same engine (the `SB-ENG
 - The Windows certificate store checks.
 
 ### Docs
-- README (English and Traditional Chinese) rewritten. Corrected: a PC without the 2023 certificates still starts and still gets normal updates (it loses boot-security updates); legacy BIOS does not block drivers; `AvailableUpdatesPolicy` must not be written by hand; the rescue import uses the `.der` files from microsoft/secureboot_objects. The download link now points to this repository. Added the exit codes, status values, events, troubleshooting and credits.
+- README (English and Traditional Chinese) rewritten. Corrected: a PC without the 2023 certificates still starts and still gets normal updates (it loses boot-security updates); legacy BIOS does not block drivers; `AvailableUpdatesPolicy` must not be written by hand; the rescue import uses the `.der` files from microsoft/secureboot_objects. The download link now points to this repository. Added the exit codes, status values, events, troubleshooting and credits. Added GUI screenshots (`docs/screenshots`).
 
 ## [1.2.1] - 2026-10-23
 
